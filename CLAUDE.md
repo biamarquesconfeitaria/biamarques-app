@@ -35,3 +35,11 @@ Nasceu como artefato do claude.ai e foi trazido para fora do Claude do mesmo jei
 ## Rodar
 
 Sirva a pasta com qualquer servidor estático (ex.: `npx serve .`). Para trazer os dados: Ajustes → Restaurar backup.
+
+## Pedido com link para o cliente (igual à proposta da DaylinTech)
+
+- `supabase/links.sql` (rodar depois do schema.sql): tabela `bia_links` (token de 43 caracteres, `pedido_id`, `dados` jsonb, `visto_em`, `aceite`), funções `bia_ver_pedido` e `bia_aceitar_pedido` (security definer, liberadas para anon) e pasta pública `bia-links` com o PDF de cada link (`<token>.pdf`).
+- No app: Enviar via WhatsApp → "Por link" (`gerarLink`, `dadosLink`). Grava uma cópia do pedido (não o HTML) e envia o PDF; o pedido guarda `linkToken`. Gerar de novo atualiza a mesma cópia e mantém o link.
+- `pedido.html#token`: página pública, sem login. Mostra o pedido, Pix (QR + "Copiar código Pix"), cartão, PDF (baixar/enviar), informações importantes, Instagram, avaliações e contatos. "Aceitar orçamento" pede nome e WhatsApp.
+- O aceite grava `aceite` no pedido (`bia_docs`) sem mudar a situação: o pedido só vira Confirmado quando a Bia recebe o sinal. No app aparece o selo "Aceito pelo cliente" e um aviso ao vivo; abrir o link grava `linkVistoEm` ("Cliente viu").
+- `read()` do formulário preserva `linkToken`, `aceite` e `linkVistoEm` ao salvar.

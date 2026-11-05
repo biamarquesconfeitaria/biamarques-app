@@ -296,7 +296,8 @@ function nuvemDb(linhas){
   linhas.forEach(put);
   sb.channel('bia_docs').on('postgres_changes',{event:'*',schema:'public',table:T_DOCS},p=>{
     if(p.eventType==='DELETE'){const o=p.old||{};if(o.col){tira(o.col,o.id);fire(o.col)}}
-    else if(p.new&&p.new.col){put(p.new);fire(p.new.col)}
+    else if(p.new&&p.new.col){const antes=(cache[p.new.col]||{})[p.new.id];const ac=p.new.data&&p.new.data.aceite;put(p.new);fire(p.new.col);
+      if(p.new.col==='pedidos'&&ac&&!(antes&&antes.aceite))setTimeout(()=>toast(`${ac.nome} aceitou o orçamento!`),60)}
   }).subscribe();
   document.addEventListener('visibilitychange',async()=>{if(document.visibilityState!=='visible')return;try{trocarTudo(await carregarTudo())}catch(e){}});
   return{
@@ -430,7 +431,7 @@ function pedidoItem(p){
     <div class="daybadge ${late?'late':''}"><small>${d?WD[d.getDay()]:'—'}</small><b class="num">${d?pad(d.getDate()):'?'}</b></div>
     <div class="main"><div class="t">${esc(p.cliente||'Sem nome')}${p.exemplo?'<span class="tag">exemplo</span>':''}</div>
       <div class="s">${p.hora?esc(p.hora)+' · ':''}${esc(resumoBolo(p)||p.descricao||'Sem descrição')}</div>
-      <div class="row" style="margin-top:4px;gap:6px">${chip(p.status)}</div></div>
+      <div class="row wrapflex" style="margin-top:4px;gap:6px">${chip(p.status)}${p.aceite&&p.status==='orcamento'?'<span class="chip s-pronto">Aceito pelo cliente</span>':''}${p.linkVistoEm&&!p.aceite&&p.status==='orcamento'?'<span class="chip s-orc">Cliente viu</span>':''}</div></div>
     <div class="end"><b>${brl(p.valor)}</b>${num(p.valor)?(pago?'<span class="paid">Pago</span>':`<span class="owe">Falta ${brl(sal)}</span>`):''}</div>
   </button>`;
 }
@@ -757,7 +758,9 @@ function formPed(id,prefill){
   const st={retirada:p.retirada||'local',tamanhoId:p.tamanhoId||'',massaId:p.massaId||'',recheioIds:Array.isArray(p.recheioIds)?p.recheioIds.slice():[],coberturaId:p.coberturaId||'',topper:!!p.topper,topperId:p.topperId||'',decoracoes:Array.isArray(p.decoracoes)?p.decoracoes.slice():[]};
   let autoValor=!id||!num(p.valor);
   let autoAdic=p.adicEspecial===''||p.adicEspecial==null;
+  const fdt=iso=>{const d=new Date(iso);return isNaN(d)?'':`${pad(d.getDate())}/${pad(d.getMonth()+1)} às ${pad(d.getHours())}h${pad(d.getMinutes())}`};
   const sh=openSheet(id?'Pedido':'Novo pedido',`<form class="f" id="fPed">
+    ${p.aceite?`<div class="note" style="border:1px solid var(--good)"><b style="color:var(--good)">Aceito pelo cliente</b> em ${fdt(p.aceite.data)}: ${esc(p.aceite.nome)}${p.aceite.whats?' · '+esc(p.aceite.whats):''}.${p.status==='orcamento'?' Quando o sinal cair, coloque o valor em “Sinal recebido” e mude a situação para Confirmado.':''}</div>`:p.linkVistoEm?`<div class="note">O cliente abriu o link do pedido em ${fdt(p.linkVistoEm)}.</div>`:''}
     <div class="field"><label for="pCli">Nome do cliente</label><input id="pCli" name="cliente" required value="${esc(p.cliente)}" placeholder="Nome" autocomplete="off"></div>
     <div class="field"><label for="pTel">WhatsApp</label><input id="pTel" name="telefone" type="tel" inputmode="tel" value="${esc(p.telefone)}" placeholder="(19) 98888-7777"></div>
     <div class="grid2">
@@ -815,7 +818,7 @@ function formPed(id,prefill){
     adicEspecial:f.adicEspecial.value.trim()===''?'':num(f.adicEspecial.value),decoracoes:st.decoracoes.slice(),cardapioId:p.cardapioId||'',
     bolo:{tamanho:t?t.nome:'',fatias:t?num(t.fatias):0,massa:nomeComp(st.massaId),recheios:st.recheioIds.map(nomeComp).filter(Boolean),cobertura:nomeComp(st.coberturaId),topper:st.topper?nomeComp(st.topperId):'',decoracoes:st.decoracoes.slice()},
     descricao:f.descricao.value.trim(),horas:f.horas.value.trim()===''?'':num(f.horas.value),embalagem:f.embalagem.value.trim()===''?'':num(f.embalagem.value),extras:num(f.extras.value),
-    valor:num(f.valor.value),sinal:num(f.sinal.value),linkPag:f.linkPag.value.trim(),status:f.status.value,obs:f.obs.value.trim(),criado:p.criado||new Date().toISOString()}};
+    valor:num(f.valor.value),sinal:num(f.sinal.value),linkPag:f.linkPag.value.trim(),linkToken:(id&&S.ped[id]&&S.ped[id].linkToken)||p.linkToken||'',aceite:(id&&S.ped[id]&&S.ped[id].aceite)||null,linkVistoEm:(id&&S.ped[id]&&S.ped[id].linkVistoEm)||'',status:f.status.value,obs:f.obs.value.trim(),criado:p.criado||new Date().toISOString()}};
   const upd=()=>{
     let c=calcPedido(read());
     if(c.temEsp&&autoAdic&&c.tam&&num(c.tam.adicEspecial)){f.adicEspecial.value=inVal(num(c.tam.adicEspecial));c=calcPedido(read())}
@@ -1081,6 +1084,45 @@ async function pdfOrcamento(p,pv,cod){
   doc.setProperties({title:`${TITULO_DOC[p.status]==='ORÇAMENTO'?'Orçamento':'Pedido'} · ${p.cliente||''} · ${S.cfg.nome||''}`,author:S.cfg.nome||''});
   return{blob:doc.output('blob'),cv,links};
 }
+function novoToken(){const t=new Uint8Array(32);crypto.getRandomValues(t);return btoa(String.fromCharCode(...t)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')}
+const linkUrl=t=>new URL('pedido.html',location.href.split('#')[0]).href+'#'+t;
+function dadosLink(p,pv,cod,pdfUrl,pdfNome){
+  const c=S.cfg,b=p.bolo||{},calc=calcPedido(p),d=parseD(p.entrega);
+  const itens=[];
+  if(b.tamanho)itens.push({t:b.tamanho,sub:b.fatias?`Rende ${fmt(b.fatias)} fatias`:'',v:calc.tam?brl(calc.base):''});
+  else if(p.pesoKg)itens.push({t:`Bolo de ${fmt(p.pesoKg)} kg`});
+  const sabor=[b.massa?`Massa ${b.massa.toLowerCase()}`:'',b.recheios&&b.recheios.length?`recheio de ${b.recheios.join(' e ').toLowerCase()}`:'',b.cobertura?`cobertura de ${b.cobertura.toLowerCase()}`:''].filter(Boolean).join(', ');
+  if(sabor)itens.push({t:'Sabor',sub:sabor.charAt(0).toUpperCase()+sabor.slice(1)});
+  if(calc.adic)itens.push({t:'Recheio especial',v:`+ ${brl(calc.adic)}`});
+  if(b.topper)itens.push({t:`Topo de bolo ${b.topper}`,v:calc.top?`+ ${brl(calc.top)}`:''});
+  if((b.decoracoes&&b.decoracoes.length)||calc.deco)itens.push({t:`Decoração${b.decoracoes&&b.decoracoes.length?': '+b.decoracoes.join(', '):''}`,v:calc.deco?`+ ${brl(calc.deco)}`:''});
+  if(p.descricao)itens.push({t:'Detalhes',sub:p.descricao});
+  const v=num(p.valor),sal=saldo(p),pg=[];
+  if(p.status==='orcamento'||!num(p.sinal))pg.push([`Sinal para confirmar (${fmt(c.sinalPct)}%)`,brl(v*num(c.sinalPct)/100)]);
+  if(num(p.sinal)){pg.push(['Sinal recebido',brl(p.sinal)]);pg.push([sal?'Falta pagar':'Pagamento',sal?brl(sal):'Completo'])}
+  const zn=(c.whatsapp||'').replace(/\D/g,'');
+  return{v:1,emp:c.nome||'Bia Marques Confeitaria',titulo:TITULO_DOC[p.status]||'ORÇAMENTO',status:p.status,cliente:p.cliente||'',telefone:p.telefone||'',resumo:resumoBolo(p),
+    retirada:{quando:d?`${WDL[d.getDay()]}, ${pad(d.getDate())}/${pad(d.getMonth()+1)}${p.hora?' às '+p.hora.replace(':','h'):''}`:'A combinar',app:p.retirada==='app',
+      local:p.retirada==='app'?'Motorista de aplicativo (por conta do cliente)':(c.endereco||''),maps:c.endereco?`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(c.endereco)}`:''},
+    itens,total:brl(v),totalN:v,pg,
+    pix:cod&&pv?{cod,valor:brl(pv.v),rotulo:pv.t}:null,cartao:linkPagDe(p)||'',
+    insta:c.instagram?{handle:c.instagram,url:`https://instagram.com/${encodeURIComponent(c.instagram.replace(/^@/,'').trim())}`}:null,
+    aval:c.avaliacoes||'',zap:zn?{num:(zn.startsWith('55')&&zn.length>=12)?zn:'55'+zn,label:c.whatsapp,url:zapHref(c.whatsapp,'')}:null,
+    email:c.email||'',site:c.site?{label:c.site.replace(/^https?:\/\//i,''),url:/^https?:/i.test(c.site)?c.site:'https://'+c.site}:null,
+    horario:c.horarioSem?`Retirada: segunda a sábado ${c.horarioSem}${c.horarioDom?`, domingo ${c.horarioDom}`:''}. É preciso retirar no horário combinado.`:'',
+    infos:infosLista(),pdf:pdfUrl||'',pdfNome:pdfNome||'',criado:new Date().toISOString()};
+}
+async function gerarLink(p,id,pv,cod){
+  const atual=S.ped[id]||{};const token=atual.linkToken||p.linkToken||novoToken();
+  const pdfNome=`pedido-${semAcento(p.cliente||'cliente').toLowerCase().replace(/ /g,'-').slice(0,30)||'cliente'}.pdf`;
+  let pdfUrl='';
+  try{const r=await pdfOrcamento(p,pv,cod);const {error}=await sb.storage.from('bia-links').upload(`${token}.pdf`,r.blob,{contentType:'application/pdf',upsert:true,cacheControl:'60'});
+    if(!error)pdfUrl=`${NUVEM.supabaseUrl}/storage/v1/object/public/bia-links/${token}.pdf?v=${Date.now()}`}catch(e){}
+  const {error}=await sb.from('bia_links').upsert({token,pedido_id:id,dados:dadosLink(p,pv,cod,pdfUrl,pdfNome)});
+  if(error)throw error;
+  await save('ped',id,{...p,linkToken:token,aceite:atual.aceite||null,linkVistoEm:atual.linkVistoEm||''});
+  return linkUrl(token);
+}
 function openEnvio(p,id){
   const temChave=!!S.cfg.pix;const pv=opcoesPix(p)[0]||null;
   const cod=temChave&&pv?pixCodigo(pv.v,`BIA${(id||'').slice(-8)}`):'';
@@ -1090,8 +1132,18 @@ function openEnvio(p,id){
   const curta=onde=>[`Olá${prim?', '+prim:''}! Segue ${p.status==='orcamento'?'o orçamento':'o resumo'} do seu bolo ${onde}.`,'',p.valor?`Valor total: ${brl(p.valor)}`:'',pv&&pv.k!=='total'?`${pv.t}: ${brl(pv.v)}`:'','',...blocoPagamento(p,pv,cod),'',S.cfg.nome||''].filter((x,i,a)=>!(x===''&&a[i-1]==='')).join('\n').trim();
   const resumo=[pv&&cod?`Pix de <b>${esc(pv.t.toLowerCase())}: ${brl(pv.v)}</b>`:'',lk?'link do cartão':'',S.cfg.instagram||S.cfg.whatsapp||S.cfg.email?'contatos':''].filter(Boolean);
   const sh=openSheet('Enviar via WhatsApp',`<div class="stack">
-    <div class="pills" data-modo><button type="button" class="pill" data-m="pdf">Por PDF</button><button type="button" class="pill" data-m="imagem">Por imagem</button><button type="button" class="pill" data-m="texto">Por texto</button></div>
+    <div class="pills" data-modo>${sb?'<button type="button" class="pill" data-m="link">Por link</button>':''}<button type="button" class="pill" data-m="pdf">Por PDF</button><button type="button" class="pill" data-m="imagem">Por imagem</button><button type="button" class="pill" data-m="texto">Por texto</button></div>
     ${temChave?(resumo.length?`<p class="muted" style="margin:0;font-size:.88rem">Já vai junto: ${resumo.join(', ')}.</p>`:''):'<div class="note warn">Cadastre a chave Pix em Ajustes para o Pix ir junto.</div>'}
+    <div data-box="link" class="stack" hidden>
+      ${id?`<div class="calc" data-linkst></div>
+      <button class="btn primary" type="button" data-link="gerar">${p.linkToken?'Atualizar o link com este pedido':'1. Criar link do pedido'}</button>
+      <div class="stack" data-linkok hidden>
+        <div class="note" style="word-break:break-all;user-select:all;font-size:.85rem" data-linktxt></div>
+        <a class="btn primary" data-zaplink href="#" target="_blank" rel="noopener">2. Enviar link pelo WhatsApp</a>
+        <div class="grid2"><button class="btn" type="button" data-link="copiar">Copiar link</button><a class="btn" data-verlink href="#" target="_blank" rel="noopener">Ver como o cliente vê</a></div>
+      </div>
+      <p class="muted" style="margin:0;font-size:.85rem">O cliente abre sem app e sem senha: vê o pedido, copia o Pix, paga no cartão, baixa o PDF e aceita o orçamento. O aceite aparece aqui na hora.</p>`:'<div class="note warn">Toque em “Salvar pedido” e abra o pedido de novo para criar o link.</div>'}
+    </div>
     <div data-box="pdf" class="stack">
       <div class="calc" data-prev="pdf" style="align-items:center;min-height:120px"><span class="muted">Montando o PDF…</span></div>
       <button class="btn primary" type="button" data-save="pdf">1. Salvar PDF</button>
@@ -1122,11 +1174,22 @@ function openEnvio(p,id){
     if(k==='imagem'&&!st.img){try{const {cv}=await imagemOrcamento(p,pv,cod,false);st.img=await new Promise(res=>cv.toBlob(res,'image/jpeg',.92));mostra('imagem',st.img)}catch(e){mostra('imagem',null)}}
   };
   const troca=m=>{st.modo=m;sh.querySelectorAll('[data-m]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.m===m));sh.querySelectorAll('[data-box]').forEach(b=>b.hidden=b.dataset.box!==m);prepara(m)};
-  troca('pdf');
+  const mostraLink=u=>{const ok=sh.querySelector('[data-linkok]');if(!ok)return;ok.hidden=!u;if(!u)return;sh.querySelector('[data-linktxt]').textContent=u;sh.querySelector('[data-verlink]').href=u;
+    sh.querySelector('[data-zaplink]').href=zapHref(p.telefone,`Olá${prim?', '+prim:''}! Segue ${p.status==='orcamento'?'o orçamento':'o resumo'} do seu bolo. Por este link você vê todos os detalhes, copia o Pix e confirma o pedido:\n\n${u}\n\n${S.cfg.nome||''}`)};
+  const stLink=()=>{const box=sh.querySelector('[data-linkst]');if(!box)return;const q=S.ped[id]||{};const fd=iso=>{const d=new Date(iso);return isNaN(d)?'':`${pad(d.getDate())}/${pad(d.getMonth()+1)} às ${pad(d.getHours())}h${pad(d.getMinutes())}`};
+    box.innerHTML=q.aceite?`<b style="color:var(--good)">Aceito pelo cliente em ${fd(q.aceite.data)}</b><span class="muted">${esc(q.aceite.nome)}${q.aceite.whats?' · '+esc(q.aceite.whats):''}</span>`:q.linkVistoEm?`<b>O cliente já abriu o link</b><span class="muted">Em ${fd(q.linkVistoEm)}. Ainda não aceitou.</span>`:q.linkToken?'<b>Link criado</b><span class="muted">O cliente ainda não abriu.</span>':'<span class="muted">Ainda não tem link para este pedido.</span>'};
+  if(id){stLink();if(p.linkToken)mostraLink(linkUrl(p.linkToken))}
+  troca(sb?'link':'pdf');
   const nomeArq=ext=>`orcamento-${semAcento(p.cliente||'cliente').toLowerCase().replace(/ /g,'-').slice(0,30)||'cliente'}.${ext}`;
   sh.addEventListener('click',async e=>{
     const m=e.target.closest('[data-m]');if(m){troca(m.dataset.m);return}
     if(e.target.closest('[data-copytxt]')){copiar(ta.value,'Mensagem copiada',ta);return}
+    const lk=e.target.closest('[data-link]');
+    if(lk&&lk.dataset.link==='copiar'){copiar(sh.querySelector('[data-linktxt]').textContent,'Link copiado');return}
+    if(lk&&lk.dataset.link==='gerar'){lk.disabled=true;const tx=lk.textContent;lk.textContent='Criando o link…';
+      try{const u=await gerarLink(p,id,pv,cod);p.linkToken=(S.ped[id]||{}).linkToken;mostraLink(u);stLink();lk.textContent='Atualizar o link com este pedido';toast('Link pronto')}
+      catch(er){lk.textContent=tx;toast('Não consegui criar o link. Confira a internet e tente de novo.')}
+      lk.disabled=false;return}
     const sh2=e.target.closest('[data-share]');
     if(sh2){const k=sh2.dataset.share;const blob=k==='pdf'?st.pdf:st.img;
       if(!blob){toast('Ainda estou montando. Espere um instante.');return}
