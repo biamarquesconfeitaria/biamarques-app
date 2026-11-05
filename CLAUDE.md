@@ -16,7 +16,7 @@ Nasceu como artefato do claude.ai e foi trazido para fora do Claude do mesmo jei
 
 ## Supabase
 
-- Mesmo projeto da DaylinTech (`pxlftfobcgrmdvbhxunr`), com tabelas e pasta próprias: os dados não se misturam e cada app tem a sua lista de membros.
+- Projeto próprio da Bia Marques (`ruuzxqetlsrmhpidxfgo`), separado do da DaylinTech (`pxlftfobcgrmdvbhxunr`, usado antes).
 - Tudo fica em `bia_docs` (`col`, `id`, `data` jsonb). Coleções: `ingredientes`, `componentes` (tamanhos, massas, recheios, coberturas, toppers; campo `tipo`), `cardapio` (fotos de bolos), `receitas`, `pedidos`, `compras` (notas lidas) e `config/geral` (ajustes).
 - `nuvemDb()` imita a API do banco do artefato (`collection().doc().set/update/delete`, `add`, `onSnapshot`), então o resto do app não mudou.
 - Login por e-mail e senha. Usuários criados em Authentication → Users → Add user (Auto confirm). Cadastro público desligado. Quem não está em `bia_membros` vê "Sem acesso".
