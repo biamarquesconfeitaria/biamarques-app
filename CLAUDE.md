@@ -65,3 +65,10 @@ Sirva a pasta com qualquer servidor estático (ex.: `npx serve .`). Para trazer 
 - Ajustes → "Sua assinatura": quadro para assinar com o dedo (`ligarAssinatura`, ligado em `render()` quando a aba é Ajustes). "Salvar assinatura" recorta o traço e grava PNG em `cfg.assinatura`. Aparece no recibo (acima da linha) e no orçamento (antes do "Obrigada").
 - `cfg.linkAvaliar`: link do Google para deixar avaliação ("Pedir avaliações" do Perfil da Empresa). `linkAvaliar()` usa ele ou, em branco, `cfg.avaliacoes`. O recibo tem o cartão clicável "Gostou? Avalie a nossa página" e a mensagem do recibo termina com o link. O orçamento continua com "Veja nossas avaliações" (`cfg.avaliacoes`).
 - Pedido entregue: ao salvar mudando a situação para Entregue, abre `pedirAvaliacao` (mensagem editável `textoAvaliacao` + WhatsApp do cliente; grava `avaliacaoPedidaEm`). No pedido entregue há o botão "Pedir avaliação".
+
+## Fotos do bolo pronto e post do Instagram
+
+- Pedido salvo: "Fotos do bolo pronto" (`galeriaPedido`), até 5 fotos em `p.fotos` (ids no bucket `bia-fotos`; sem nuvem, só na memória em `fotosLocais`). Gravam na hora, sem esperar "Salvar pedido". Excluir o pedido apaga as fotos que não estão no cardápio.
+- Ao salvar mudando para Entregue abre `pedidoFinalizado`: fotos, "Criar post para o Instagram", "Colocar nas fotos do cardápio" (`paraCardapio`, cria/atualiza um bolo em `cardapio` com `pedidoId`) e "Pedir avaliação".
+- `criarPost`: escolhe as fotos (ordem do carrossel), formato (`FMT_POST`: Feed 4:5, Quadrado, Stories) e estilo (`ESTILO_POST`: faixa com texto, logo no canto, moldura rosa, só a foto), texto na foto e legenda (`legendaPost`: tema, tamanho e sabores, WhatsApp, cidade, hashtags; sem o nome do cliente). `desenharPost` desenha em canvas com a logo.
+- Instagram não aceita publicação por app de fora sem a API oficial: "Publicar no Instagram" copia a legenda e abre o Compartilhar do celular com as imagens (Web Share); sem suporte, salva as fotos e abre o instagram.com. Grava `postEm`.

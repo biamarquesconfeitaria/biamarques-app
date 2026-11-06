@@ -814,6 +814,7 @@ function formPed(id,prefill){
         <div class="field"><label for="pHoras">Horas de trabalho</label><input id="pHoras" name="horas" inputmode="decimal" value="${inVal(p.horas)}"></div>
         <div class="field"><label for="pEmb">Embalagem (R$)</label><input id="pEmb" name="embalagem" inputmode="decimal" value="${inVal(p.embalagem)}"></div>
       </div></details>
+    ${id?`<h3 class="sub">Fotos do bolo pronto</h3><div class="field" data-galped></div><button class="btn" type="button" id="pPost">Criar post para o Instagram</button>`:''}
     <div class="field"><label for="pStatus">Situação</label><select id="pStatus" name="status">${Object.entries(STATUS).map(([k,v])=>`<option value="${k}" ${k===p.status?'selected':''}>${v.t}</option>`).join('')}</select></div>
     <div class="field"><label for="pObs">Anotações</label><textarea id="pObs" name="obs" placeholder="Alergias, quem vai retirar…">${esc(p.obs)}</textarea></div>
     <div class="actions"><button class="btn primary" type="submit">Salvar pedido</button><button class="btn" type="button" id="pZap">Enviar via WhatsApp</button>${id&&p.status==='entregue'?`<button class="btn" type="button" id="pAval">${p.avaliacaoPedidaEm?'Pedir avaliação de novo':'Pedir avaliação'}</button>`:''}${id?'<button class="btn danger" type="button" id="pDel">Excluir pedido</button>':''}</div>
@@ -849,7 +850,7 @@ function formPed(id,prefill){
     adicEspecial:f.adicEspecial.value.trim()===''?'':num(f.adicEspecial.value),decoracoes:st.decoracoes.slice(),cardapioId:p.cardapioId||'',
     bolo:{tamanho:t?t.nome:'',fatias:t?num(t.fatias):0,massa:nomeComp(st.massaId),recheios:st.recheioIds.map(nomeComp).filter(Boolean),cobertura:nomeComp(st.coberturaId),topper:st.topper?nomeComp(st.topperId):'',decoracoes:st.decoracoes.slice()},
     descricao:f.descricao.value.trim(),horas:f.horas.value.trim()===''?'':num(f.horas.value),embalagem:f.embalagem.value.trim()===''?'':num(f.embalagem.value),extras:num(f.extras.value),
-    valor:num(f.valor.value),sinal:num(f.sinal.value),pagamentos:(id&&S.ped[id]&&S.ped[id].pagamentos)||p.pagamentos||[],linkPag:f.linkPag.value.trim(),linkToken:(id&&S.ped[id]&&S.ped[id].linkToken)||p.linkToken||'',aceite:(id&&S.ped[id]&&S.ped[id].aceite)||null,linkVistoEm:(id&&S.ped[id]&&S.ped[id].linkVistoEm)||'',status:f.status.value,obs:f.obs.value.trim(),criado:p.criado||new Date().toISOString()}};
+    valor:num(f.valor.value),sinal:num(f.sinal.value),pagamentos:(id&&S.ped[id]&&S.ped[id].pagamentos)||p.pagamentos||[],fotos:(id&&S.ped[id]&&S.ped[id].fotos)||p.fotos||[],linkPag:f.linkPag.value.trim(),linkToken:(id&&S.ped[id]&&S.ped[id].linkToken)||p.linkToken||'',aceite:(id&&S.ped[id]&&S.ped[id].aceite)||null,linkVistoEm:(id&&S.ped[id]&&S.ped[id].linkVistoEm)||'',status:f.status.value,obs:f.obs.value.trim(),criado:p.criado||new Date().toISOString()}};
   const upd=()=>{
     let c=calcPedido(read());
     if(c.temEsp&&autoAdic&&c.tam&&num(c.tam.adicEspecial)){f.adicEspecial.value=inVal(num(c.tam.adicEspecial));c=calcPedido(read())}
@@ -906,10 +907,12 @@ function formPed(id,prefill){
   f.addEventListener('submit',e=>{e.preventDefault();
     if(st.topper&&!st.topperId){toast('Escolha o tipo de topo de bolo ou marque “Não”.');return}
     const d=read(),antes=id&&S.ped[id]?S.ped[id].status:'';
-    save('ped',id,d).then(nid=>{if(d.status==='entregue'&&antes!=='entregue')pedirAvaliacao(nid)});closeSheet();toast('Pedido salvo')});
+    save('ped',id,d).then(nid=>{if(d.status==='entregue'&&antes!=='entregue')pedidoFinalizado(nid)});closeSheet();toast('Pedido salvo')});
   const avb=sh.querySelector('#pAval');if(avb)avb.addEventListener('click',()=>pedirAvaliacao(id));
+  const gp=sh.querySelector('[data-galped]');if(gp)galeriaPedido(gp,id);
+  const pb=sh.querySelector('#pPost');if(pb)pb.addEventListener('click',()=>criarPost(id));
   sh.querySelector('#pZap').addEventListener('click',()=>openEnvio(read(),id));
-  const del=sh.querySelector('#pDel');if(del)del.addEventListener('click',()=>armDelete(del,()=>{remove('ped',id);closeSheet();toast('Pedido excluído')}));
+  const del=sh.querySelector('#pDel');if(del)del.addEventListener('click',()=>armDelete(del,async()=>{const fts=((S.ped[id]&&S.ped[id].fotos)||[]).filter(f=>typeof f==='string'&&!Object.values(S.card).some(c=>(c.fotos||[]).includes(f)));remove('ped',id);closeSheet();toast('Pedido excluído');if(fts.length){const a=await getAssets();if(a)fts.forEach(f=>a.delete(f).catch(()=>{}))}}));
 }
 function msgPedido(p,extra){
   const c=S.cfg;const d=parseD(p.entrega);
@@ -1185,6 +1188,163 @@ function pedirAvaliacao(id){
   </div>`,2);
   const ta=sh.querySelector('#avTxt'),a=sh.querySelector('[data-av]');const set=()=>{a.href=zapHref(p.telefone,ta.value)};set();ta.addEventListener('input',set);
   a.addEventListener('click',()=>{save('ped',id,{...S.ped[id],avaliacaoPedidaEm:new Date().toISOString()})});
+}
+
+/* ---------- fotos do bolo pronto e post do Instagram ---------- */
+const fotosLocais={};// sem nuvem: fotos só na memória, enquanto o app está aberto
+const fotosDe=id=>{const p=S.ped[id];return sb?((p&&Array.isArray(p.fotos))?p.fotos:[]):(fotosLocais[id]||[])};
+const fotoSrc=f=>typeof f==='string'?blobUrl(f):(f.url||'');
+async function fotoImg(f){if(typeof f==='string')return loadAsset(f);try{return await createImageBitmap(f.blob)}catch(e){return loadImg(f.url)}}
+// galeria de fotos do pedido (até 5), usada no pedido e na tela de pedido finalizado
+function galeriaPedido(box,id,onChange){
+  let enviando=0;
+  const draw=()=>{const fs=fotosDe(id);
+    box.innerHTML=`<div class="gal">${fs.map((f,i)=>`<div class="th"><img src="${esc(fotoSrc(f))}" alt="Foto ${i+1} do bolo"><button type="button" data-rmfp="${i}" aria-label="Remover foto ${i+1}">×</button></div>`).join('')}
+      ${enviando?'<div class="addph">Enviando…</div>':''}
+      ${fs.length+enviando<5?`<label class="addph" for="fp_${esc(id)}">+ Foto do bolo</label>`:''}
+      <input class="vh" id="fp_${esc(id)}" type="file" accept="image/*" multiple tabindex="-1"></div>
+      <small class="muted">${fs.length?`${fs.length} de 5 fotos.`:'Até 5 fotos do bolo pronto.'}</small>`};
+  const gravar=lista=>{if(sb){const cur=S.ped[id];if(cur)save('ped',id,{...cur,fotos:lista})}else fotosLocais[id]=lista;draw();if(onChange)onChange()};
+  box.addEventListener('change',async e=>{if(!e.target.id||!e.target.id.startsWith('fp_'))return;
+    const files=Array.from(e.target.files||[]).filter(x=>x.type&&x.type.startsWith('image/'));e.target.value='';
+    const assets=sb?await getAssets():null;
+    for(const file of files){
+      if(fotosDe(id).length>=5){toast('Até 5 fotos por pedido.');break}
+      enviando++;draw();
+      try{const blob=await prepImg(file,1800,.88);
+        if(assets){const r=await assets.upload(blob);gravar([...fotosDe(id),r.id])}
+        else gravar([...fotosDe(id),{blob,url:URL.createObjectURL(blob)}])}
+      catch(err){toast(err&&err.code==='quota_exceeded'?'O espaço de fotos acabou. Remova fotos antigas.':'Não consegui enviar a foto. Tente de novo.')}
+      enviando--;draw();
+    }});
+  box.addEventListener('click',async e=>{const b=e.target.closest('[data-rmfp]');if(!b)return;
+    const lista=[...fotosDe(id)];const [rm]=lista.splice(+b.dataset.rmfp,1);gravar(lista);
+    if(typeof rm==='string'&&!Object.values(S.card).some(c=>(c.fotos||[]).includes(rm))){const a=await getAssets();if(a)a.delete(rm).catch(()=>{})}});
+  draw();
+  return draw;
+}
+function textoFotoPost(p){const b=p.bolo||{};const t=String(p.descricao||'').split(/[.\n]/)[0].trim();return(t&&t.length<=40?t:'')||[b.tamanho,(b.recheios||[]).join(' e ')].filter(Boolean).join(' · ')}
+function legendaPost(p){
+  const b=p.bolo||{},c=S.cfg;
+  const tema=String(p.descricao||'').split('\n')[0].trim();
+  const sabor=[b.massa?`massa ${b.massa.toLowerCase()}`:'',b.recheios&&b.recheios.length?`recheio de ${b.recheios.join(' e ').toLowerCase()}`:'',b.cobertura?`cobertura de ${b.cobertura.toLowerCase()}`:''].filter(Boolean).join(', ');
+  const L=[];
+  L.push(tema?`✨ ${tema} ✨`:'✨ Mais um bolo feito com muito carinho ✨');
+  if(b.tamanho||sabor)L.push('',`🎂 ${[b.tamanho,sabor].filter(Boolean).join(' · ')}`);
+  if(b.topper)L.push(`🎀 Topo de bolo ${b.topper.toLowerCase()}`);
+  L.push('','Cada detalhe pensado para deixar o seu momento ainda mais especial. 💕');
+  L.push('',`📲 Encomendas pelo WhatsApp${c.whatsapp?' '+c.whatsapp:''}`);
+  if(c.endereco)L.push(`📍 Retirada em ${cidadeCfg()||c.endereco}`);
+  const cid=semAcento(cidadeCfg()||'').toLowerCase().replace(/[^a-z]/g,'');
+  L.push('',['#bolo','#bolodecorado','#bolopersonalizado','#confeitaria','#bolodeaniversario',cid&&'#'+cid,cid&&'#bolos'+cid,cid&&'#confeitaria'+cid,'#'+semAcento(c.nome||'biamarquesconfeitaria').toLowerCase().replace(/[^a-z]/g,'')].filter(Boolean).join(' '));
+  return L.join('\n');
+}
+const FMT_POST={feed:{t:'Feed 4:5',w:1080,h:1350},quadrado:{t:'Quadrado',w:1080,h:1080},stories:{t:'Stories',w:1080,h:1920}};
+const ESTILO_POST={logo:'Logo no canto',faixa:'Faixa com texto',moldura:'Moldura rosa',nada:'Só a foto'};
+let logoImgCache=null;
+async function desenharPost(img,fmt,estilo,texto){
+  await fontsReady();
+  if(!logoImgCache)logoImgCache=await loadImg(LOGO).catch(()=>null);
+  const {w:W,h:H}=FMT_POST[fmt]||FMT_POST.feed,c=S.cfg;
+  const cv=document.createElement('canvas');cv.width=W;cv.height=H;const ctx=cv.getContext('2d');
+  const selo=(cx,cy,r)=>{if(!logoImgCache)return;ctx.save();ctx.shadowColor='rgba(0,0,0,.25)';ctx.shadowBlur=18;ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(cx,cy,r+8,0,Math.PI*2);ctx.fill();ctx.restore();
+    ctx.save();ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.clip();ctx.drawImage(logoImgCache,cx-r,cy-r,r*2,r*2);ctx.restore()};
+  const insta=(c.instagram||'').trim();
+  if(estilo==='moldura'){
+    ctx.fillStyle=IMG.pink;ctx.fillRect(0,0,W,H);
+    const m=44,fb=fmt==='stories'?300:220;cover(ctx,img,m,m,W-2*m,H-m-fb,26);
+    const y0=H-fb;selo(m+80,y0+fb/2,62);
+    ctx.textAlign='left';ctx.fillStyle=IMG.brand;ctx.font='700 40px "Josefin Sans", sans-serif';
+    const nome=c.nome||'Bia Marques Confeitaria';const mm=nome.match(/^(.*?)\s+(confeitaria)$/i);
+    spaced(ctx,(mm?mm[1]:nome).toUpperCase(),m+175,y0+fb/2-12,5);
+    if(mm){ctx.font='64px "Allura", cursive';ctx.fillText(mm[2],m+175,y0+fb/2+50)}
+    if(texto||insta){ctx.textAlign='right';ctx.fillStyle=IMG.ink;ctx.font='700 30px "Figtree", sans-serif';
+      if(texto)lines(ctx,texto,W-2*m-560,2).forEach((l,i)=>ctx.fillText(l,W-m-10,y0+fb/2-10+i*38-(texto&&insta?14:0)));
+      if(insta){ctx.fillStyle=IMG.accent;ctx.font='600 28px "Figtree", sans-serif';ctx.fillText(insta,W-m-10,y0+fb/2+(texto?56:10))}}
+    ctx.textAlign='left';return cv;
+  }
+  cover(ctx,img,0,0,W,H,0);
+  if(estilo==='logo'){selo(W-110,H-110,74);return cv}
+  if(estilo==='faixa'){
+    const fh=fmt==='stories'?340:250;const g=ctx.createLinearGradient(0,H-fh-120,0,H);g.addColorStop(0,'rgba(58,36,49,0)');g.addColorStop(.45,'rgba(58,36,49,.55)');g.addColorStop(1,'rgba(58,36,49,.85)');
+    ctx.fillStyle=g;ctx.fillRect(0,H-fh-120,W,fh+120);
+    selo(120,H-fh/2-(fmt==='stories'?60:0),68);
+    const tx=225,ty=H-fh/2-(fmt==='stories'?60:0);
+    ctx.textAlign='left';ctx.fillStyle='#fff';ctx.font='700 46px "Figtree", sans-serif';
+    const ls=texto?lines(ctx,texto,W-tx-50,2):[];ls.forEach((l,i)=>ctx.fillText(l,tx,ty-(ls.length>1?30:6)+i*54));
+    ctx.font='600 30px "Figtree", sans-serif';ctx.fillStyle=IMG.pink;ctx.fillText(insta||c.nome||'',tx,ty+(ls.length>1?66:44));
+    return cv;
+  }
+  return cv;
+}
+function criarPost(id){
+  const p=S.ped[id];if(!p)return;
+  const fs=fotosDe(id);if(!fs.length){toast('Adicione as fotos do bolo primeiro.');return}
+  const st={fmt:'feed',estilo:'faixa',sel:fs.map((_,i)=>i),imgs:[],texto:textoFotoPost(p)};
+  const sh=openSheet('Post para o Instagram',`<div class="stack">
+    <div class="calc" data-pv style="align-items:center;min-height:200px;padding:8px"><span class="muted">Montando…</span></div>
+    <div class="field"><span class="lbl">Fotos do post <small class="muted">(toque para tirar ou pôr)</small></span><div class="gal" data-sel></div></div>
+    <div class="field"><span class="lbl">Formato</span><div class="pills" data-fmt>${Object.entries(FMT_POST).map(([k,v])=>`<button type="button" class="pill" data-v="${k}" aria-pressed="${k===st.fmt}">${v.t}</button>`).join('')}</div></div>
+    <div class="field"><span class="lbl">Estilo</span><div class="pills" data-est>${Object.entries(ESTILO_POST).map(([k,v])=>`<button type="button" class="pill" data-v="${k}" aria-pressed="${k===st.estilo}">${v}</button>`).join('')}</div></div>
+    <div class="field" data-txtbox><label for="poTxt">Texto na foto</label><input id="poTxt" value="${esc(st.texto)}" maxlength="60" placeholder="Ex.: Tema jardim encantado"></div>
+    <div class="field"><label for="poLeg">Legenda</label><textarea id="poLeg" style="min-height:230px">${esc(legendaPost(p))}</textarea></div>
+    <button class="btn primary" type="button" data-po="ig">Publicar no Instagram</button>
+    <div class="grid2"><button class="btn" type="button" data-po="leg">Copiar legenda</button><button class="btn" type="button" data-po="save">Salvar fotos</button></div>
+    <small class="muted">Ao tocar em Publicar, a legenda já fica copiada. No Instagram, escolha <b>Feed</b> (ou Stories), avance e <b>cole a legenda</b>.</small>
+  </div>`,2);
+  const pv=sh.querySelector('[data-pv]'),selBox=sh.querySelector('[data-sel]'),leg=sh.querySelector('#poLeg'),txt=sh.querySelector('#poTxt');
+  let urls=[];const limpa=()=>{urls.forEach(u=>URL.revokeObjectURL(u));urls=[]};
+  const drawSel=()=>{selBox.innerHTML=fs.map((f,i)=>`<button type="button" class="th" data-si="${i}" style="padding:0;border:3px solid ${st.sel.includes(i)?'var(--accent)':'transparent'};border-radius:12px;opacity:${st.sel.includes(i)?1:.45};background:none"><img src="${esc(fotoSrc(f))}" alt="Foto ${i+1}">${st.sel.includes(i)?`<span class="capa">${st.sel.indexOf(i)+1}</span>`:''}</button>`).join('')};
+  let vez=0;
+  const preview=async()=>{const n=++vez;sh.querySelector('[data-txtbox]').hidden=st.estilo==='logo'||st.estilo==='nada';
+    const i=st.sel[0];if(i==null){pv.innerHTML='<span class="muted">Escolha pelo menos uma foto.</span>';return}
+    if(!st.imgs[i])st.imgs[i]=await fotoImg(fs[i]);if(n!==vez)return;
+    const cv=await desenharPost(st.imgs[i],st.fmt,st.estilo,txt.value.trim());if(n!==vez)return;
+    const b=await new Promise(r=>cv.toBlob(r,'image/jpeg',.85));limpa();const u=URL.createObjectURL(b);urls.push(u);
+    pv.innerHTML=`<img src="${u}" alt="Prévia do post" style="max-width:100%;max-height:420px;border-radius:10px;border:1px solid var(--line)">${st.sel.length>1?`<small class="muted">Primeira de ${st.sel.length} fotos (carrossel).</small>`:''}`};
+  const gerar=async()=>{const out=[];for(const [k,i] of st.sel.entries()){if(!st.imgs[i])st.imgs[i]=await fotoImg(fs[i]);const cv=await desenharPost(st.imgs[i],st.fmt,st.estilo,txt.value.trim());
+    const b=await new Promise(r=>cv.toBlob(r,'image/jpeg',.92));out.push(new File([b],`bolo-${semAcento(p.cliente||'').toLowerCase().replace(/[^a-z0-9]+/g,'-').slice(0,20)||'post'}-${k+1}.jpg`,{type:'image/jpeg'}))}return out};
+  drawSel();preview();
+  sh.addEventListener('click',async e=>{
+    const si=e.target.closest('[data-si]');if(si){const i=+si.dataset.si,k=st.sel.indexOf(i);if(k>=0)st.sel.splice(k,1);else st.sel.push(i);drawSel();preview();return}
+    const pf=e.target.closest('[data-fmt] [data-v]');if(pf){st.fmt=pf.dataset.v;sh.querySelectorAll('[data-fmt] [data-v]').forEach(x=>x.setAttribute('aria-pressed',x===pf));preview();return}
+    const pe=e.target.closest('[data-est] [data-v]');if(pe){st.estilo=pe.dataset.v;sh.querySelectorAll('[data-est] [data-v]').forEach(x=>x.setAttribute('aria-pressed',x===pe));preview();return}
+    const b=e.target.closest('[data-po]');if(!b)return;const k=b.dataset.po;
+    if(k==='leg'){copiar(leg.value,'Legenda copiada',leg);return}
+    if(!st.sel.length){toast('Escolha pelo menos uma foto.');return}
+    b.disabled=true;const t0=b.textContent;b.textContent='Preparando…';
+    try{const files=await gerar();
+      if(k==='ig'){try{await navigator.clipboard.writeText(leg.value)}catch(_){}
+        if(navigator.canShare&&navigator.canShare({files})){try{await navigator.share({files});save('ped',id,{...S.ped[id],postEm:new Date().toISOString()});toast('Legenda copiada: cole no Instagram.')}catch(er){if(!(er&&er.name==='AbortError'))toast('Não consegui abrir o Compartilhar. Use Salvar fotos.')}}
+        else{const dl=await getDownloads();for(const f of files)await dl.save({filename:f.name,data:f});window.open('https://www.instagram.com/','_blank','noopener');toast('Fotos salvas e legenda copiada. No Instagram, crie o post com as fotos salvas.')}}
+      else{const dl=await getDownloads();for(const f of files)await dl.save({filename:f.name,data:f});toast(files.length>1?'Fotos salvas':'Foto salva')}}
+    finally{b.disabled=false;b.textContent=t0}
+  });
+  txt.addEventListener('input',()=>{clearTimeout(txt._t);txt._t=setTimeout(preview,350)});
+}
+// tela de pedido finalizado: fotos, post e avaliação
+function pedidoFinalizado(id){
+  const p=S.ped[id];if(!p)return;
+  const sh=openSheet('Pedido finalizado 🎉',`<div class="stack">
+    <p style="margin:0">Bolo de <b>${esc(p.cliente||'cliente')}</b> entregue.</p>
+    <div class="field"><span class="lbl">1. Fotos do bolo</span><div data-galfim></div></div>
+    <button class="btn primary" type="button" data-fim="post">2. Criar post para o Instagram</button>
+    <button class="btn" type="button" data-fim="card">Colocar nas fotos do cardápio</button>
+    <button class="btn" type="button" data-fim="aval">3. Pedir avaliação no WhatsApp</button>
+  </div>`,2);
+  galeriaPedido(sh.querySelector('[data-galfim]'),id);
+  sh.addEventListener('click',e=>{const b=e.target.closest('[data-fim]');if(!b)return;const k=b.dataset.fim;
+    if(k==='post'){closeSheet(2);criarPost(id)}
+    else if(k==='aval'){closeSheet(2);pedirAvaliacao(id)}
+    else if(k==='card')paraCardapio(id)});
+}
+function paraCardapio(id){
+  const p=S.ped[id];const fs=fotosDe(id).filter(f=>typeof f==='string');
+  if(!fs.length){toast(sb?'Adicione as fotos do bolo primeiro.':'Para guardar fotos no cardápio, entre com a sua conta.');return}
+  const b=p.bolo||{};const nome=String(p.descricao||'').split(/[.\n]/)[0].trim().slice(0,50)||`Bolo ${[b.tamanho,(b.recheios||[])[0]].filter(Boolean).join(' de ')}`.trim();
+  const ja=Object.entries(S.card).find(([,c])=>c.pedidoId===id);
+  save('card',ja?ja[0]:null,{...(ja?ja[1]:{}),nome,categoria:(ja&&ja[1].categoria)||'',descricao:p.descricao||'',fotos:fs.slice(0,6),tamanhoId:p.tamanhoId||'',massaId:p.massaId||'',recheioIds:(p.recheioIds||[]).slice(),coberturaId:p.coberturaId||'',pedidoId:id});
+  toast(ja?'Fotos do cardápio atualizadas':'Bolo colocado nas fotos do cardápio');
 }
 
 /* ---------- pagamentos e recibo ---------- */
