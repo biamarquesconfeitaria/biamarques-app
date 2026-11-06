@@ -84,7 +84,6 @@ ol{margin:0;padding-left:1.3em;display:flex;flex-direction:column;gap:8px;color:
 <div id="raiz"><p class="msg">Carregando o seu pedido…</p></div>
 <script src="config.js"></script>
 <script src="vendor/supabase-2.117.3.js"></script>
-<script src="vendor/qrcode-generator-1.4.4.min.js"></script>
 <script>
 (async function(){
   var raiz=document.getElementById('raiz'),token=decodeURIComponent(location.hash.slice(1));
@@ -117,7 +116,7 @@ ol{margin:0;padding-left:1.3em;display:flex;flex-direction:column;gap:8px;color:
   html+='<section><div class="total"><span>Total</span><b>'+esc(D.total)+'</b></div><div class="pg">'+(D.pg||[]).map(function(x){return '<div class="row"><span>'+esc(x[0])+'</span><b>'+esc(x[1])+'</b></div>'}).join('')+'</div></section>';
   if(D.pix||D.cartao){
     html+='<section><h2>Pagamento</h2><div class="stack">';
-    if(D.pix)html+='<div class="card"><div class="pix"><canvas id="qr" width="300" height="300" aria-label="QR Code do Pix"></canvas><div><div style="font-size:1.3rem;font-weight:800">Pix</div><div class="val">'+esc(D.pix.valor)+'</div><div class="muted">'+esc(D.pix.rotulo||'')+'</div><div class="muted" style="font-size:.9rem;margin-top:6px">Escaneie no app do banco ou copie o código abaixo.</div></div></div><div class="cod" id="cod">'+esc(D.pix.cod)+'</div><button class="btn pri" type="button" id="copiar" style="margin-top:10px">Copiar código Pix</button></div>';
+    if(D.pix)html+='<div class="card"><div class="row"><div style="font-size:1.3rem;font-weight:800">Pix</div><div class="val" style="font-size:1.5rem;font-weight:800;color:var(--accent)">'+esc(D.pix.valor)+'</div></div><div class="muted">'+esc(D.pix.rotulo||'')+'</div><div class="muted" style="font-size:.9rem;margin-top:6px">Copie o código e cole no app do banco em Pix copia e cola.</div><div class="cod" id="cod">'+esc(D.pix.cod)+'</div><button class="btn pri" type="button" id="copiar" style="margin-top:10px">Copiar código Pix</button></div>';
     if(D.cartao)html+='<a class="btn" href="'+esc(D.cartao)+'" target="_blank" rel="noopener">Pagar com cartão (até 5x)</a>';
     html+='</div></section>';
   }
@@ -137,9 +136,6 @@ ol{margin:0;padding-left:1.3em;display:flex;flex-direction:column;gap:8px;color:
   html+='<div class="fim">Obrigada pela preferência!</div></main>';
   raiz.innerHTML=html;
 
-  // QR Code do Pix
-  if(D.pix&&window.qrcode){try{var q=qrcode(0,'M');q.addData(D.pix.cod);q.make();var n=q.getModuleCount(),cv=$('qr'),x=cv.getContext('2d'),m=n+8,c=300/m;x.fillStyle='#fff';x.fillRect(0,0,300,300);x.fillStyle='#3A2431';
-    for(var a=0;a<n;a++)for(var b=0;b<n;b++)if(q.isDark(a,b))x.fillRect(Math.floor((b+4)*c),Math.floor((a+4)*c),Math.ceil(c),Math.ceil(c))}catch(e){}}
   function copiar(t,bt,okTxt){function ok(){var o=bt.textContent;bt.textContent=okTxt;setTimeout(function(){bt.textContent=o},2500)}
     function fb(){var ta=document.createElement('textarea');ta.value=t;ta.setAttribute('readonly','');ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();try{document.execCommand('copy');ok()}catch(e){}ta.remove()}
     if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(t).then(ok,fb);else fb()}

@@ -947,6 +947,11 @@ function drawQR(ctx,text,x,y,size,cor){
     for(let r=0;r<n;r++)for(let c=0;c<n;c++)if(q.isDark(r,c))ctx.fillRect(Math.floor(x+(c+4)*cell),Math.floor(y+(r+4)*cell),Math.ceil(cell),Math.ceil(cell));
     return true}catch(e){return false}
 }
+function pixChaveTexto(){const c=S.cfg,k=String(c.pix||'').trim();if(!k)return'';const t=c.pixTipo||tipoChave(k);
+  let v=k;if(t==='celular'){const d=k.replace(/\D/g,'').replace(/^55(?=\d{10,11}$)/,'');v=d.length===11?`(${d.slice(0,2)}) ${d.slice(2,7)}-${d.slice(7)}`:d.length===10?`(${d.slice(0,2)}) ${d.slice(2,6)}-${d.slice(6)}`:k}
+  const nomes={celular:'celular',cpf:'CPF',cnpj:'CNPJ',email:'e-mail',aleatoria:'chave aleatória'};
+  return`Chave Pix (${nomes[t]||'chave'}): ${v}${c.pixNome?' · '+c.pixNome:''}`}
+const pixUrl=cod=>new URL('pix.html',location.href.split('#')[0]).href+'#'+encodeURIComponent(cod);
 function opcoesPix(p){
   const v=num(p.valor),sinal=v*num(S.cfg.sinalPct)/100,sal=saldo(p),o=[];
   if(!v)return o;
@@ -1020,16 +1025,28 @@ async function imagemOrcamento(p,pv,cod,pdf){
     if(cod||lk){
       titulo('Pagamento');
       if(cod){
-        const qs=300,extra=pdf?230:0,top=y;
-        ctx.fillStyle=IMG.pink;rr(ctx,P,y,W-2*P,qs+60+extra,28);ctx.fill();
-        drawQR(ctx,cod,P+30,y+30,qs,IMG.ink);
-        const tx=P+qs+70,tw=W-P-tx-30;let yy=y+80;
-        ctx.fillStyle=IMG.ink;ctx.font='800 44px "Figtree", sans-serif';ctx.fillText('Pix',tx,yy);yy+=52;
-        ctx.fillStyle=IMG.accent;ctx.font='700 34px "Figtree", sans-serif';ctx.fillText(pv?brl(pv.v):'',tx,yy);yy+=38;
-        ctx.fillStyle=IMG.muted;ctx.font='500 26px "Figtree", sans-serif';if(pv)ctx.fillText(pv.t,tx,yy);yy+=48;
-        lines(ctx,pdf?'Escaneie o QR Code no app do banco ou copie o código abaixo.':'Abra o app do banco e escaneie o QR Code, ou use o Pix copia e cola enviado na conversa.',tw,4).forEach(l=>{ctx.fillText(l,tx,yy);yy+=34});
-        if(pdf){const by=top+qs+56;ctx.fillStyle=IMG.ink;ctx.font='800 28px "Figtree", sans-serif';ctx.fillText('Pix copia e cola',P+30,by+20);const lw=ctx.measureText('Pix copia e cola').width;ctx.fillStyle=IMG.muted;ctx.font='500 24px "Figtree", sans-serif';ctx.fillText('  ·  toque e segure no código para copiar',P+30+lw,by+20);ctx.fillStyle='#FFFFFF';rr(ctx,P+30,by+40,W-2*P-60,150,18);ctx.fill();ctx.strokeStyle=IMG.soft;ctx.lineWidth=3;rr(ctx,P+30,by+40,W-2*P-60,150,18);ctx.stroke();codeBox={x:P+54,y:by+62,w:W-2*P-108,h:120};ctx.fillStyle=IMG.ink;ctx.font='600 25px ui-monospace, Menlo, Consolas, monospace';const cw=ctx.measureText('0').width||15;const per=Math.max(20,Math.floor(codeBox.w/cw));for(let i=0,li=0;i<cod.length&&li<4;i+=per,li++)ctx.fillText(cod.slice(i,i+per),codeBox.x,codeBox.y+26+li*32)}
-        y=top+qs+60+extra+34;
+        const top=y,bw=W-2*P;
+        const chave=pixChaveTexto();
+        const h=pdf?(chave?520:470):(chave?300:250);
+        ctx.fillStyle=IMG.pink;rr(ctx,P,y,bw,h,28);ctx.fill();
+        let yy=y+74;
+        ctx.fillStyle=IMG.ink;ctx.font='800 44px "Figtree", sans-serif';ctx.fillText('Pix',P+36,yy);
+        ctx.textAlign='right';ctx.fillStyle=IMG.accent;ctx.font='800 44px "Figtree", sans-serif';ctx.fillText(pv?brl(pv.v):'',W-P-36,yy);ctx.textAlign='left';yy+=42;
+        ctx.fillStyle=IMG.muted;ctx.font='500 27px "Figtree", sans-serif';if(pv)ctx.fillText(pv.t,P+36,yy);
+        if(chave){yy+=50;ctx.fillStyle=IMG.ink;ctx.font='600 28px "Figtree", sans-serif';ctx.fillText(lines(ctx,chave,bw-72,1)[0],P+36,yy)}
+        if(pdf){
+          yy+=40;botao('Copiar código Pix ›',P+36,yy,bw-72,pixUrl(cod));yy+=76+44;
+          ctx.fillStyle=IMG.muted;ctx.font='500 25px "Figtree", sans-serif';
+          lines(ctx,'Toque no botão, copie e cole no app do banco em Pix copia e cola. Ou toque e segure no código abaixo.',bw-72,2).forEach(l=>{ctx.fillText(l,P+36,yy);yy+=34});
+          yy+=6;ctx.fillStyle='#FFFFFF';rr(ctx,P+30,yy,bw-60,120,18);ctx.fill();ctx.strokeStyle=IMG.soft;ctx.lineWidth=3;rr(ctx,P+30,yy,bw-60,120,18);ctx.stroke();
+          codeBox={x:P+54,y:yy+14,w:bw-108,h:92};ctx.fillStyle=IMG.ink;ctx.font='600 22px ui-monospace, Menlo, Consolas, monospace';
+          const cl=[];let rest=cod;while(rest.length&&cl.length<3){let n=rest.length;while(n>1&&ctx.measureText(rest.slice(0,n)).width>bw-108)n--;cl.push(rest.slice(0,n));rest=rest.slice(n)}
+          if(rest.length)cl[2]=cl[2].slice(0,-1)+'…';cl.forEach((l,i)=>ctx.fillText(l,P+54,yy+40+i*30));
+        }else{
+          yy+=48;ctx.fillStyle=IMG.muted;ctx.font='500 26px "Figtree", sans-serif';
+          lines(ctx,'Use o Pix copia e cola enviado na conversa'+(chave?' ou a chave acima.':'.'),bw-72,2).forEach(l=>{ctx.fillText(l,P+36,yy);yy+=34});
+        }
+        y=top+h+34;
       }
       if(lk){
         ctx.fillStyle=IMG.ink;ctx.font='700 30px "Figtree", sans-serif';ctx.fillText('Cartão de débito ou crédito (até 5x)',P,y+20);y+=48;

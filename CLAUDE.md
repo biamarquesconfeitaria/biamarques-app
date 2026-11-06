@@ -28,7 +28,8 @@ Nasceu como artefato do claude.ai e foi trazido para fora do Claude do mesmo jei
 - Lucro estimado no pedido: ingredientes pelo peso aproximado do tamanho (`pesoKg`) × custo por kg das partes, + gás/energia (%) + embalagem + horas × valor da hora.
 - Receitas: preço sugerido por kg a partir dos ingredientes.
 - Pix: BR Code estático com CRC16-CCITT (`pixCodigo`, `crc16`). Valor automático: sinal (orçamento sem sinal), falta pagar (com sinal) ou total.
-- Envio do pedido: PDF (links clicáveis, Pix copia e cola em texto invisível de linha única sobre o código visível), imagem ou texto. Botões: Salvar, Compartilhar (Web Share com arquivo) e Enviar texto pelo WhatsApp.
+- Envio do pedido: PDF (links clicáveis; Pix sem QR Code, com a chave, o botão "Copiar código Pix" que abre `pix.html#<código>` e o código visível com texto invisível de linha única por cima), imagem ou texto.
+- `pix.html#<BR Code>`: página pública que mostra valor e recebedor, confere o CRC e tem o botão de copiar. O código fica depois do `#`, então não vai para servidor nenhum. A página do link (`pedido.html`) também não mostra mais QR Code. Botões: Salvar, Compartilhar (Web Share com arquivo) e Enviar texto pelo WhatsApp.
 - Retirada na Rua Amapá 227, Araras; prazo 3 dias com topo e 2 sem; horários em Ajustes.
 
 ## Rodar

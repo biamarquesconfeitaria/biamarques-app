@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<meta name="referrer" content="no-referrer">
+<meta name="theme-color" content="#FEE4E5">
+<title>Pix · Bia Marques Confeitaria</title>
+<link rel="icon" href="icons/icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Josefin+Sans:wght@600;700&family=Allura&family=Figtree:wght@400;500;600;700;800&display=swap">
+<style>
+/* Página aberta pelo botão "Copiar código Pix" do PDF do orçamento.
+   O código vem depois do # do endereço (não vai para nenhum servidor). */
+:root{--bg:#FFFFFF;--pink:#FEE4E5;--soft:#FBD0D7;--ink:#3A2431;--muted:#7D6175;--brand:#A2708B;--accent:#8A5674;--good:#4F7A2E;
+  --f-display:"Josefin Sans","Avenir Next",system-ui,sans-serif;--f-script:"Allura","Snell Roundhand",cursive;--f-body:"Figtree",-apple-system,system-ui,"Segoe UI",sans-serif;color-scheme:light}
+*{box-sizing:border-box}
+html,body{background:var(--bg)}
+body{margin:0;color:var(--ink);font:16px/1.5 var(--f-body);-webkit-text-size-adjust:100%}
+[hidden]{display:none!important}
+.topo{background:var(--pink);text-align:center;padding:calc(24px + env(safe-area-inset-top,0px)) 16px 22px}
+.topo img{width:92px;height:92px;border-radius:50%;box-shadow:0 0 0 4px #fff}
+.nm{font-family:var(--f-display);font-weight:700;letter-spacing:.12em;color:var(--brand);font-size:1.2rem;margin-top:10px;text-transform:uppercase}
+.sc{font-family:var(--f-script);color:var(--brand);font-size:2.3rem;line-height:.9}
+main{max-width:560px;margin:0 auto;padding:22px 16px calc(40px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:18px}
+.card{background:var(--pink);border-radius:20px;padding:20px}
+.lin{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.lin b{font-size:1.4rem;font-weight:800}
+.val{font-size:1.6rem;font-weight:800;color:var(--accent);font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}
+.cod{margin-top:14px;background:#fff;border:2px solid var(--soft);border-radius:14px;padding:12px 14px;font:600 .85rem/1.45 ui-monospace,Menlo,Consolas,monospace;word-break:break-all;user-select:all;-webkit-user-select:all}
+.btn{display:flex;align-items:center;justify-content:center;width:100%;min-height:58px;margin-top:14px;border:0;border-radius:999px;background:var(--accent);color:#fff;font:800 1.1rem var(--f-body);cursor:pointer}
+.btn.ok{background:var(--good)}
+ol{margin:0;padding-left:22px;display:flex;flex-direction:column;gap:6px}
+.erro{text-align:center;padding:30px 10px}
+</style>
+</head>
+<body>
+<div class="topo">
+  <img src="icons/icon-192.png" alt="Logo da Bia Marques Confeitaria">
+  <div class="nm">Bia Marques</div><div class="sc">Confeitaria</div>
+</div>
+<main>
+  <div id="ok" hidden>
+    <div class="card">
+      <div class="lin"><b>Pix</b><span class="val" id="valor"></span></div>
+      <div class="muted" id="para"></div>
+      <button class="btn" type="button" id="copiar">Copiar código Pix</button>
+      <div class="cod" id="cod"></div>
+    </div>
+    <div class="card" style="background:#fff;border:2px solid var(--soft);margin-top:18px">
+      <b>Como pagar</b>
+      <ol style="margin-top:8px">
+        <li>Toque em <b>Copiar código Pix</b>.</li>
+        <li>Abra o app do seu banco e escolha <b>Pix copia e cola</b>.</li>
+        <li>Cole o código, confira o valor e confirme.</li>
+        <li>Envie o comprovante para a Bia pelo WhatsApp.</li>
+      </ol>
+    </div>
+  </div>
+  <div class="erro" id="erro" hidden>
+    <b>Não encontrei o código Pix.</b>
+    <p class="muted">Abra de novo pelo botão do orçamento ou peça o código para a Bia pelo WhatsApp.</p>
+  </div>
+</main>
+<script>
+(function(){
+  var $=function(i){return document.getElementById(i)};
+  var cod='';try{cod=decodeURIComponent(location.hash.slice(1)).trim()}catch(e){}
+  // lê os campos do BR Code (id de 2 dígitos, tamanho de 2 dígitos, valor)
+  function campos(s){var o={},i=0;while(i+4<=s.length){var id=s.substr(i,2),n=parseInt(s.substr(i+2,2),10);if(isNaN(n))break;o[id]=s.substr(i+4,n);i+=4+n}return o}
+  function crc16(s){var c=0xFFFF;for(var i=0;i<s.length;i++){c^=s.charCodeAt(i)<<8;for(var j=0;j<8;j++)c=(c&0x8000)?((c<<1)^0x1021)&0xFFFF:(c<<1)&0xFFFF}return c.toString(16).toUpperCase().padStart(4,'0')}
+  var valido=/^000201/.test(cod)&&cod.length>30&&crc16(cod.slice(0,-4))===cod.slice(-4).toUpperCase();
+  if(!valido){$('erro').hidden=false;return}
+  var f=campos(cod);
+  $('ok').hidden=false;
+  $('cod').textContent=cod;
+  if(f['54'])$('valor').textContent=Number(f['54']).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+  if(f['59'])$('para').textContent='Para: '+f['59'];
+  function copiar(){var bt=$('copiar');
+    function ok(){bt.textContent='Código copiado! Agora cole no app do banco.';bt.classList.add('ok');setTimeout(function(){bt.textContent='Copiar código Pix';bt.classList.remove('ok')},4000)}
+    function fb(){var ta=document.createElement('textarea');ta.value=cod;ta.setAttribute('readonly','');ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();ta.setSelectionRange(0,cod.length);var feito=false;try{feito=document.execCommand('copy')}catch(e){}ta.remove();if(feito)ok();else{var r=document.createRange();r.selectNodeContents($('cod'));var sel=getSelection();sel.removeAllRanges();sel.addRange(r);bt.textContent='Toque e segure no código e escolha Copiar'}}
+    if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(cod).then(ok,fb);else fb()}
+  $('copiar').onclick=copiar;
+})();
+</script>
+</body>
+</html>
