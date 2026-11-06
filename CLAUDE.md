@@ -59,3 +59,9 @@ Sirva a pasta com qualquer servidor estático (ex.: `npx serve .`). Para trazer 
 - Fica em `p.pagamentos: [{id, num, data, valor, tipo, forma, parcelas, nome}]`; `p.sinal` guarda a soma (`totalPago`), então saldo e "A receber" continuam iguais. O primeiro pagamento muda o pedido de Orçamento para Confirmado. Pedido antigo com sinal anotado à mão vira um pagamento `antigo: true` (sem recibo).
 - Número do recibo: sequência única (`cfg.reciboSeq`, `nRecibo`).
 - `verRecibo`: prévia, "Enviar recibo no WhatsApp" (Compartilhar do celular com o PDF e a mensagem; sem isso, salva o PDF e abre a conversa), "Salvar PDF", mensagem editável (`textoRecibo`) e "Desfazer este pagamento". O recibo (`imagemRecibo`/`pdfRecibo`) é desenhado em canvas como o orçamento, com valor por extenso (`extenso`), referente a sinal/restante/total, forma, resumo (valor do pedido, recebido até aquele recibo, falta pagar ou quitado), cidade e data, assinatura e contatos clicáveis.
+
+## Assinatura e avaliações
+
+- Ajustes → "Sua assinatura": quadro para assinar com o dedo (`ligarAssinatura`, ligado em `render()` quando a aba é Ajustes). "Salvar assinatura" recorta o traço e grava PNG em `cfg.assinatura`. Aparece no recibo (acima da linha) e no orçamento (antes do "Obrigada").
+- `cfg.linkAvaliar`: link do Google para deixar avaliação ("Pedir avaliações" do Perfil da Empresa). `linkAvaliar()` usa ele ou, em branco, `cfg.avaliacoes`. O recibo tem o cartão clicável "Gostou? Avalie a nossa página" e a mensagem do recibo termina com o link. O orçamento continua com "Veja nossas avaliações" (`cfg.avaliacoes`).
+- Pedido entregue: ao salvar mudando a situação para Entregue, abre `pedirAvaliacao` (mensagem editável `textoAvaliacao` + WhatsApp do cliente; grava `avaliacaoPedidaEm`). No pedido entregue há o botão "Pedir avaliação".

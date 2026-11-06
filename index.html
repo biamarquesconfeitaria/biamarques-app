@@ -179,6 +179,9 @@ details summary{list-style-position:inside}
 .bar i{display:block;height:100%;width:35%;background:var(--accent);border-radius:3px;animation:slide 1.4s ease-in-out infinite}
 @keyframes slide{0%{transform:translateX(-100%)}100%{transform:translateX(300%)}}
 @media (prefers-reduced-motion:reduce){.bar i{animation:none;width:100%;opacity:.5}}
+.sigbox{position:relative;background:#fff;border:1.5px dashed var(--brand);border-radius:14px;overflow:hidden;touch-action:none}
+.sigbox canvas{display:block;width:100%;height:auto;touch-action:none;cursor:crosshair}
+.sigbox img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#fff;pointer-events:none}
 .revrow{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:10px}
 .revrow.off{opacity:.55}
 .revrow.off .field,.revrow.off .grid3{display:none}
@@ -420,6 +423,7 @@ function render(){
   const v=$('#view');
   const views={inicio:vInicio,pedidos:vPedidos,cardapio:vCardapio,receitas:vReceitas,ingredientes:vIngredientes,ajustes:vAjustes};
   v.innerHTML=(S.note?`<div class="note warn" style="margin-top:8px">${esc(S.note)}</div>`:'')+views[t]();
+  if(t==='ajustes')ligarAssinatura();
 }
 
 /* ---------- telas ---------- */
@@ -534,6 +538,7 @@ function vAjustes(){
     </div>
     <div class="field"><label for="cLink">Link de pagamento (cartão)</label><input id="cLink" name="linkPagamento" type="url" value="${esc(c.linkPagamento)}" placeholder="https://…"><small>Usado em todos os pedidos. Dá para trocar em cada pedido.</small></div>
     <div class="field"><label for="cAval">Link das avaliações</label><input id="cAval" name="avaliacoes" type="url" value="${esc(c.avaliacoes)}" placeholder="https://g.page/r/…"><small>Página do Google ou Instagram com as avaliações. Aparece no orçamento.</small></div>
+    <div class="field"><label for="cAvaliar">Link para o cliente deixar avaliação</label><input id="cAvaliar" name="linkAvaliar" type="url" value="${esc(c.linkAvaliar||'')}" placeholder="https://g.page/r/…/review"><small>No Google: Perfil da Empresa → “Pedir avaliações” → copiar o link. Vai no recibo e na mensagem do pedido entregue. Em branco, usa o link das avaliações acima.</small></div>
     <h3 class="sub">Retirada e regras</h3>
     <div class="field"><label for="cEnd">Endereço de retirada</label><input id="cEnd" name="endereco" value="${esc(c.endereco)}"></div>
     <div class="grid2">
@@ -547,6 +552,10 @@ function vAjustes(){
     <div class="field"><label for="cInfos">Informações importantes</label><textarea id="cInfos" name="infos" style="min-height:220px">${esc(c.infos)}</textarea><small>Uma informação por linha. Aparecem no cardápio.</small></div>
     <button class="btn primary block" type="submit">Salvar ajustes</button>
   </form>
+  <div class="section"><h2>Sua assinatura</h2>
+    <p class="muted" style="margin:0">Assine uma vez com o dedo. Ela aparece nos recibos e nos orçamentos.</p>
+    <div class="sigbox"><canvas id="sigPad" width="900" height="300" aria-label="Espaço para assinar"></canvas>${c.assinatura?`<img id="sigAtual" src="${esc(c.assinatura)}" alt="Assinatura salva">`:''}</div>
+    <div class="grid2"><button class="btn" type="button" data-act="sigLimpar">${c.assinatura?'Assinar de novo':'Limpar'}</button><button class="btn primary" type="button" data-act="sigSalvar">Salvar assinatura</button></div></div>
   <div class="section"><h2>Onde ficam os dados</h2><p class="muted" style="margin:0">${modo}</p>
     <div class="grid2"><button class="btn" data-act="backup">Baixar backup</button><label class="btn" for="rsFile">Restaurar backup</label></div>
     <input class="vh" id="rsFile" type="file" accept="application/json,.json" tabindex="-1">
@@ -807,7 +816,7 @@ function formPed(id,prefill){
       </div></details>
     <div class="field"><label for="pStatus">Situação</label><select id="pStatus" name="status">${Object.entries(STATUS).map(([k,v])=>`<option value="${k}" ${k===p.status?'selected':''}>${v.t}</option>`).join('')}</select></div>
     <div class="field"><label for="pObs">Anotações</label><textarea id="pObs" name="obs" placeholder="Alergias, quem vai retirar…">${esc(p.obs)}</textarea></div>
-    <div class="actions"><button class="btn primary" type="submit">Salvar pedido</button><button class="btn" type="button" id="pZap">Enviar via WhatsApp</button>${id?'<button class="btn danger" type="button" id="pDel">Excluir pedido</button>':''}</div>
+    <div class="actions"><button class="btn primary" type="submit">Salvar pedido</button><button class="btn" type="button" id="pZap">Enviar via WhatsApp</button>${id&&p.status==='entregue'?`<button class="btn" type="button" id="pAval">${p.avaliacaoPedidaEm?'Pedir avaliação de novo':'Pedir avaliação'}</button>`:''}${id?'<button class="btn danger" type="button" id="pDel">Excluir pedido</button>':''}</div>
   </form>`);
   const f=sh.querySelector('form');
   const pgsBox=sh.querySelector('[data-pgs]');
@@ -896,7 +905,9 @@ function formPed(id,prefill){
   });
   f.addEventListener('submit',e=>{e.preventDefault();
     if(st.topper&&!st.topperId){toast('Escolha o tipo de topo de bolo ou marque “Não”.');return}
-    save('ped',id,read());closeSheet();toast('Pedido salvo')});
+    const d=read(),antes=id&&S.ped[id]?S.ped[id].status:'';
+    save('ped',id,d).then(nid=>{if(d.status==='entregue'&&antes!=='entregue')pedirAvaliacao(nid)});closeSheet();toast('Pedido salvo')});
+  const avb=sh.querySelector('#pAval');if(avb)avb.addEventListener('click',()=>pedirAvaliacao(id));
   sh.querySelector('#pZap').addEventListener('click',()=>openEnvio(read(),id));
   const del=sh.querySelector('#pDel');if(del)del.addEventListener('click',()=>armDelete(del,()=>{remove('ped',id);closeSheet();toast('Pedido excluído')}));
 }
@@ -995,6 +1006,7 @@ async function imagemOrcamento(p,pv,cod,pdf){
   const site=c.site?(/^https?:/i.test(c.site)?c.site:'https://'+c.site):'';
   const mail=c.email?`mailto:${c.email}`:'';
   const links=[];let codeBox=null;
+  const sigO=c.assinatura?await loadImg(c.assinatura).catch(()=>null):null;
   const desenhar=ctx=>{
     links.length=0;codeBox=null;
     ctx.fillStyle=IMG.bg;ctx.fillRect(0,0,W,ctx.canvas.height);
@@ -1098,6 +1110,9 @@ async function imagemOrcamento(p,pv,cod,pdf){
     card([c.whatsapp&&['whatsapp',c.whatsapp,'WhatsApp',zapUrl],c.email&&['email',c.email,'E-mail',mail],c.site&&['site',c.site.replace(/^https?:\/\//i,''),'Site',site]].filter(Boolean),'Contato');
     ctx.fillStyle=IMG.muted;ctx.font='500 25px "Figtree", sans-serif';ctx.textAlign='center';
     if(c.horarioSem)lines(ctx,`Retirada: segunda a sábado ${c.horarioSem}${c.horarioDom?`, domingo ${c.horarioDom}`:''}. É preciso retirar no horário combinado.`,W-2*P,3).forEach(l=>{ctx.fillText(l,W/2,y);y+=34});
+    if(sigO){y+=150;const k=Math.min(110/sigO.naturalHeight,420/sigO.naturalWidth),w=sigO.naturalWidth*k,hh=sigO.naturalHeight*k;ctx.drawImage(sigO,W/2-w/2,y-hh+16,w,hh);
+      ctx.strokeStyle=IMG.ink;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(W/2-230,y);ctx.lineTo(W/2+230,y);ctx.stroke();y+=44;
+      ctx.fillStyle=IMG.ink;ctx.font='700 30px "Figtree", sans-serif';ctx.fillText(c.pixNome||c.nome||'',W/2,y);y+=10}
     y+=40;ctx.fillStyle=IMG.brand;ctx.font='64px "Allura", cursive';ctx.fillText('Obrigada pela preferência!',W/2,y+20);
     ctx.textAlign='left';y+=80;
     ctx.fillStyle=IMG.pink;ctx.fillRect(0,y,W,24);y+=24;
@@ -1123,6 +1138,55 @@ async function pdfOrcamento(p,pv,cod){
   doc.setProperties({title:`${TITULO_DOC[p.status]==='ORÇAMENTO'?'Orçamento':'Pedido'} · ${p.cliente||''} · ${S.cfg.nome||''}`,author:S.cfg.nome||''});
   return{blob:doc.output('blob'),cv,links};
 }
+/* ---------- assinatura ---------- */
+let sigTem=false;
+function ligarAssinatura(){
+  const cv=document.getElementById('sigPad');if(!cv||cv.dataset.on)return;cv.dataset.on='1';sigTem=false;
+  const x=cv.getContext('2d');x.lineWidth=5;x.lineCap='round';x.lineJoin='round';x.strokeStyle='#2B1B25';
+  let des=false,ult=null;
+  const pt=e=>{const r=cv.getBoundingClientRect();return{x:(e.clientX-r.left)*cv.width/r.width,y:(e.clientY-r.top)*cv.height/r.height}};
+  cv.addEventListener('pointerdown',e=>{const im=document.getElementById('sigAtual');if(im)im.remove();des=true;ult=pt(e);cv.setPointerCapture(e.pointerId);x.beginPath();x.arc(ult.x,ult.y,2.5,0,Math.PI*2);x.fillStyle='#2B1B25';x.fill();sigTem=true;e.preventDefault()});
+  cv.addEventListener('pointermove',e=>{if(!des)return;const p=pt(e);x.beginPath();x.moveTo(ult.x,ult.y);x.lineTo(p.x,p.y);x.stroke();ult=p;e.preventDefault()});
+  const fim=()=>{des=false};cv.addEventListener('pointerup',fim);cv.addEventListener('pointercancel',fim);
+}
+function limparAssinatura(){const cv=document.getElementById('sigPad');if(!cv)return;cv.getContext('2d').clearRect(0,0,cv.width,cv.height);const im=document.getElementById('sigAtual');if(im)im.remove();sigTem=false}
+function salvarAssinatura(){
+  const cv=document.getElementById('sigPad');if(!cv)return;
+  if(!sigTem){toast(S.cfg.assinatura?'Para trocar, toque em “Assinar de novo” e assine no quadro.':'Assine no quadro com o dedo.');return}
+  // recorta só a parte assinada
+  const x=cv.getContext('2d'),d=x.getImageData(0,0,cv.width,cv.height).data;let x0=cv.width,y0=cv.height,x1=0,y1=0;
+  for(let y=0;y<cv.height;y++)for(let i=0;i<cv.width;i++)if(d[(y*cv.width+i)*4+3]>10){if(i<x0)x0=i;if(i>x1)x1=i;if(y<y0)y0=y;if(y>y1)y1=y}
+  if(x1<=x0){toast('Assine no quadro com o dedo.');return}
+  const m=12;x0=Math.max(0,x0-m);y0=Math.max(0,y0-m);x1=Math.min(cv.width,x1+m);y1=Math.min(cv.height,y1+m);
+  const o=document.createElement('canvas');o.width=x1-x0;o.height=y1-y0;o.getContext('2d').drawImage(cv,x0,y0,o.width,o.height,0,0,o.width,o.height);
+  saveCfg({assinatura:o.toDataURL('image/png')});toast('Assinatura salva');
+}
+// desenha a assinatura salva centralizada em (cx, base), com altura máxima h
+async function desenharAssinatura(ctx,cx,base,h,wmax){
+  if(!S.cfg.assinatura)return false;
+  const im=await loadImg(S.cfg.assinatura).catch(()=>null);if(!im)return false;
+  const k=Math.min(h/im.naturalHeight,wmax/im.naturalWidth),w=im.naturalWidth*k,hh=im.naturalHeight*k;
+  ctx.drawImage(im,cx-w/2,base-hh,w,hh);return true;
+}
+const linkAvaliar=()=>(S.cfg.linkAvaliar||S.cfg.avaliacoes||'').trim();
+function textoAvaliacao(p){
+  const prim=String(p.cliente||'').trim().split(/\s+/)[0];const lk=linkAvaliar();
+  return[`Olá${prim?', '+prim:''}! Esperamos que você e seus convidados tenham amado o bolo! 🎂`,
+    lk?`Se puder, deixe sua avaliação para a ${S.cfg.nome||'confeitaria'}. Leva menos de um minuto e ajuda muito:\n${lk}`:'Se puder, conte para a gente o que achou. Sua opinião ajuda muito!',
+    '','Muito obrigada pela preferência!',S.cfg.pixNome||S.cfg.nome||''].join('\n');
+}
+function pedirAvaliacao(id){
+  const p=S.ped[id];if(!p)return;
+  const sh=openSheet('Pedir avaliação',`<div class="stack">
+    <p style="margin:0">Pedido de <b>${esc(p.cliente||'cliente')}</b> entregue. Que tal pedir uma avaliação?</p>
+    ${linkAvaliar()?'':'<div class="note warn">Coloque o link de avaliação do Google em Ajustes para ele ir junto na mensagem.</div>'}
+    <div class="field"><label for="avTxt">Mensagem</label><textarea id="avTxt" style="min-height:170px">${esc(textoAvaliacao(p))}</textarea></div>
+    <a class="btn primary" data-av href="#" target="_blank" rel="noopener">Enviar no WhatsApp</a>
+  </div>`,2);
+  const ta=sh.querySelector('#avTxt'),a=sh.querySelector('[data-av]');const set=()=>{a.href=zapHref(p.telefone,ta.value)};set();ta.addEventListener('input',set);
+  a.addEventListener('click',()=>{save('ped',id,{...S.ped[id],avaliacaoPedidaEm:new Date().toISOString()})});
+}
+
 /* ---------- pagamentos e recibo ---------- */
 const FORMAS_PG={pix:'Pix',credito:'Cartão de crédito',debito:'Cartão de débito',dinheiro:'Dinheiro',transferencia:'Transferência'};
 const TIPOS_PG={sinal:'Sinal',restante:'Restante',total:'Valor total'};
@@ -1160,6 +1224,7 @@ async function imagemRecibo(p,pg){
   const insta=c.instagram?`https://instagram.com/${encodeURIComponent(c.instagram.replace(/^@/,'').trim())}`:'';
   const zapUrl=c.whatsapp?zapHref(c.whatsapp,''):'';
   const pago=pagoAte(p,pg),falta=Math.max(0,Math.round((num(p.valor)-pago)*100)/100);
+  const sig=c.assinatura?await loadImg(c.assinatura).catch(()=>null):null;const aval=linkAvaliar();
   const desenhar=ctx=>{
     links.length=0;
     ctx.fillStyle=IMG.bg;ctx.fillRect(0,0,W,ctx.canvas.height);
@@ -1186,12 +1251,18 @@ async function imagemRecibo(p,pg){
     y+=40;
     const d=parseD(pg.data)||new Date();const cid=cidadeCfg();
     ctx.fillStyle=IMG.ink;ctx.font='500 30px "Figtree", sans-serif';ctx.fillText(`${cid?cid+', ':''}${d.getDate()} de ${MES[d.getMonth()]} de ${d.getFullYear()}.`,P,y);y+=150;
+    if(sig){const k=Math.min(120/sig.naturalHeight,460/sig.naturalWidth),w=sig.naturalWidth*k,hh=sig.naturalHeight*k;ctx.drawImage(sig,W/2-w/2,y-hh+18,w,hh)}
     ctx.strokeStyle=IMG.ink;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(W/2-260,y);ctx.lineTo(W/2+260,y);ctx.stroke();y+=50;
     ctx.textAlign='center';ctx.fillStyle=IMG.ink;ctx.font='700 32px "Figtree", sans-serif';ctx.fillText(c.pixNome||nome,W/2,y);y+=42;
     ctx.fillStyle=IMG.muted;ctx.font='500 26px "Figtree", sans-serif';ctx.fillText(nome,W/2,y);y+=60;
     const cont=[c.whatsapp&&['WhatsApp '+c.whatsapp,zapUrl],c.instagram&&[c.instagram,insta]].filter(Boolean);
     if(cont.length){ctx.font='700 27px "Figtree", sans-serif';const sep='   ·   ';const ws=cont.map(([t])=>ctx.measureText(t).width),wsep=ctx.measureText(sep).width;let x=W/2-(ws.reduce((a,b)=>a+b,0)+wsep*(cont.length-1))/2;ctx.textAlign='left';
       cont.forEach(([t,u],i)=>{ctx.fillStyle=IMG.accent;ctx.fillText(t,x,y);if(u)links.push({x:x-6,y:y-34,w:ws[i]+12,h:46,url:u});x+=ws[i];if(i<cont.length-1){ctx.fillStyle=IMG.muted;ctx.fillText(sep,x,y);x+=wsep}});y+=40}
+    if(aval){y+=30;ctx.fillStyle=IMG.pink;rr(ctx,P,y,W-2*P,130,28);ctx.fill();
+      ctx.save();ctx.fillStyle=IMG.accent;ctx.beginPath();const cx=P+70,cy=y+65;for(let i=0;i<10;i++){const r=i%2?11:26,a=-Math.PI/2+i*Math.PI/5;ctx.lineTo(cx+r*Math.cos(a),cy+r*Math.sin(a))}ctx.closePath();ctx.fill();ctx.restore();
+      ctx.textAlign='left';ctx.fillStyle=IMG.ink;ctx.font='700 32px "Figtree", sans-serif';ctx.fillText('Gostou? Avalie a nossa página',P+120,y+56);
+      ctx.fillStyle=IMG.accent;ctx.font='600 27px "Figtree", sans-serif';ctx.fillText('Toque aqui e deixe sua avaliação ›',P+120,y+96);
+      links.push({x:P,y,w:W-2*P,h:130,url:aval});y+=130}
     ctx.textAlign='center';y+=50;ctx.fillStyle=IMG.brand;ctx.font='64px "Allura", cursive';ctx.fillText('Obrigada pela preferência!',W/2,y+20);
     ctx.textAlign='left';y+=80;ctx.fillStyle=IMG.pink;ctx.fillRect(0,y,W,24);y+=24;
     return y;
@@ -1217,7 +1288,9 @@ function textoRecibo(p,pg){
   const L=[`Olá${prim?', '+prim:''}! Recebemos o seu pagamento de ${brl(pg.valor)} via ${viaPg(pg)}, referente ${referentePg(p,pg)}.`];
   if(pagamentosDe(p).filter(x=>!x.antigo)[0]===pg||pagamentosDe(p).filter(x=>!x.antigo)[0]&&pagamentosDe(p).filter(x=>!x.antigo)[0].id===pg.id)L.push('Seu pedido está confirmado! 🎂');
   L.push(falta>0?`Falta pagar ${brl(falta)}${d?' até a retirada':''}.`:'Pedido quitado. Muito obrigada!');
-  L.push('Segue o recibo.','',S.cfg.nome||'');
+  L.push('Segue o recibo.');
+  if(linkAvaliar())L.push('',`Veja e deixe sua avaliação: ${linkAvaliar()}`);
+  L.push('',S.cfg.nome||'');
   return L.join('\n');
 }
 // Registrar pagamento: grava no pedido, confirma o pedido no primeiro pagamento e já abre o recibo
@@ -2037,6 +2110,8 @@ document.addEventListener('click',e=>{
   if(t.dataset.filtro){filtroPed=t.dataset.filtro;return render()}
   const a=t.dataset.act;
   if(a==='fechar')return closeSheet(+t.dataset.layer||1);
+  if(a==='sigLimpar')return limparAssinatura();
+  if(a==='sigSalvar')return salvarAssinatura();
   if(a==='colarNota')return abrirTextoNota('',false);
   if(a==='pararNota'){nota.cancel=true;if(ocrWorker){try{ocrWorker.terminate()}catch(_){}ocrWorker=null}nota.busy=false;render();return}
   if(a==='novaEmb')return formIng(null,'embalagem');
@@ -2054,7 +2129,7 @@ document.addEventListener('click',e=>{
 });
 document.addEventListener('submit',e=>{
   if(e.target.id!=='fCfg')return;e.preventDefault();const f=e.target;
-  saveCfg({nome:f.nome.value.trim(),valorHora:num(f.valorHora.value),margemPct:num(f.margemPct.value),indiretosPct:num(f.indiretosPct.value),sinalPct:num(f.sinalPct.value),horasKg:num(f.horasKg.value),embalagemPadrao:num(f.embalagemPadrao.value),whatsapp:f.whatsapp.value.trim(),instagram:f.instagram.value.trim(),email:f.email.value.trim(),site:f.site.value.trim(),pix:f.pix.value.trim(),pixTipo:f.pixTipo.value,pixNome:f.pixNome.value.trim(),pixCidade:f.pixCidade.value.trim(),linkPagamento:f.linkPagamento.value.trim(),avaliacoes:f.avaliacoes.value.trim(),endereco:f.endereco.value.trim(),horarioSem:f.horarioSem.value.trim(),horarioDom:f.horarioDom.value.trim(),prazoTopo:num(f.prazoTopo.value),prazoSem:num(f.prazoSem.value),pagamento:f.pagamento.value.trim(),decoracaoTxt:f.decoracaoTxt.value.trim(),infos:f.infos.value.split('\n').map(x=>x.trim()).filter(Boolean).join('\n')});toast('Ajustes salvos');
+  saveCfg({linkAvaliar:f.linkAvaliar.value.trim(),nome:f.nome.value.trim(),valorHora:num(f.valorHora.value),margemPct:num(f.margemPct.value),indiretosPct:num(f.indiretosPct.value),sinalPct:num(f.sinalPct.value),horasKg:num(f.horasKg.value),embalagemPadrao:num(f.embalagemPadrao.value),whatsapp:f.whatsapp.value.trim(),instagram:f.instagram.value.trim(),email:f.email.value.trim(),site:f.site.value.trim(),pix:f.pix.value.trim(),pixTipo:f.pixTipo.value,pixNome:f.pixNome.value.trim(),pixCidade:f.pixCidade.value.trim(),linkPagamento:f.linkPagamento.value.trim(),avaliacoes:f.avaliacoes.value.trim(),endereco:f.endereco.value.trim(),horarioSem:f.horarioSem.value.trim(),horarioDom:f.horarioDom.value.trim(),prazoTopo:num(f.prazoTopo.value),prazoSem:num(f.prazoSem.value),pagamento:f.pagamento.value.trim(),decoracaoTxt:f.decoracaoTxt.value.trim(),infos:f.infos.value.split('\n').map(x=>x.trim()).filter(Boolean).join('\n')});toast('Ajustes salvos');
 });
 document.addEventListener('input',e=>{if(e.target.id==='buscaIng'){buscaIng=e.target.value;const pos=e.target.selectionStart;render();const n=$('#buscaIng');if(n){n.focus();try{n.setSelectionRange(pos,pos)}catch(_){}}}});
 document.addEventListener('change',e=>{if(e.target.id==='notaFile'){const fs=Array.from(e.target.files||[]);e.target.value='';lerFotos(fs)}
