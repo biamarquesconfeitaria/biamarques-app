@@ -1224,20 +1224,37 @@ function galeriaPedido(box,id,onChange){
   return draw;
 }
 function textoFotoPost(p){const b=p.bolo||{};const t=String(p.descricao||'').split(/[.\n]/)[0].trim();return(t&&t.length<=40?t:'')||[b.tamanho,(b.recheios||[]).join(' e ')].filter(Boolean).join(' · ')}
-function legendaPost(p){
-  const b=p.bolo||{},c=S.cfg;
-  const tema=String(p.descricao||'').split('\n')[0].trim();
-  const sabor=[b.massa?`massa ${b.massa.toLowerCase()}`:'',b.recheios&&b.recheios.length?`recheio de ${b.recheios.join(' e ').toLowerCase()}`:'',b.cobertura?`cobertura de ${b.cobertura.toLowerCase()}`:''].filter(Boolean).join(', ');
-  const L=[];
-  L.push(tema?`✨ ${tema} ✨`:'✨ Mais um bolo feito com muito carinho ✨');
-  if(b.tamanho||sabor)L.push('',`🎂 ${[b.tamanho,sabor].filter(Boolean).join(' · ')}`);
-  if(b.topper)L.push(`🎀 Topo de bolo ${b.topper.toLowerCase()}`);
-  L.push('','Bolo artesanal e personalizado, feito com muito carinho para o seu momento especial. 💕');
-  L.push('',`📲 Encomendas pelo WhatsApp${c.whatsapp?' '+c.whatsapp:''}`);
-  if(c.endereco)L.push(`📍 Retirada: ${c.endereco}`);
-  const cid=semAcento(cidadeCfg()||'').toLowerCase().replace(/[^a-z]/g,'');
-  L.push('',['#bolo','#bolodecorado','#bolopersonalizado','#confeitaria','#bolodeaniversario',cid&&'#'+cid,cid&&'#bolos'+cid,cid&&'#confeitaria'+cid,'#'+semAcento(c.nome||'biamarquesconfeitaria').toLowerCase().replace(/[^a-z]/g,'')].filter(Boolean).join(' '));
-  return L.join('\n');
+// Legenda no jeito da Bia (posts do @biamarquesconfeitaria): emojis do tema, uma frase carinhosa,
+// "para comemorar os 4 aninhos do Théo" e poucas hashtags em CamelCase.
+const EMOJI_TEMA=[[/sonic/,'💙💛','🦔'],[/magali|melancia/,'🍉','🍉'],[/cinnamoroll|arco.?iris|unic[oó]rnio/,'🌈💖','🦄'],[/fundo do mar|baleia|oceano|sereia|praia|moana/,'💙🌊','🐳'],
+  [/futebol|bola|flamengo|corinthians|palmeiras|s[aã]o paulo|santos/,'⚽💚','⚽'],[/princesa|realeza|coroa/,'👑💗','👑'],[/dinossauro|dino/,'🦖💚','🦕'],[/safari|selva|le[aã]o|zool[oó]gico/,'🦁🌿','🐘'],
+  [/jardim|flor|borboleta|primavera/,'🌸🦋','🌷'],[/homem.?aranha|spider|vingadores|her[oó]i|batman|super/,'❤️💙','🕷️'],[/frozen|elsa|neve/,'❄️💙','⛄'],[/minnie|mickey/,'🎀🖤','🐭'],
+  [/patrulha canina|cachorr/,'🐶💙','🐾'],[/carro|hot wheels|relampago/,'🏎️🔥','🚗'],[/astronauta|espa[cç]o|foguete|planeta/,'🚀🌙','🪐'],[/fazendinha|fazenda/,'🐮🌻','🐔'],[/stitch/,'💙💜','👽'],
+  [/casamento|noivado|noiva/,'🤍💍','💐'],[/ch[aá] revela/,'💗💙','🎀'],[/batizado|batismo|primeira comunh/,'🤍🕊️','✨']];
+function emojisTema(t){t=semAcento(String(t||'')).toLowerCase();const e=EMOJI_TEMA.find(([r])=>r.test(t));return e?{par:e[1],um:e[2]}:{par:'💖✨',um:'🎂'}}
+const camel=t=>semAcento(String(t||'')).replace(/[^A-Za-z0-9 ]+/g,' ').split(/\s+/).filter(Boolean).map(w=>w.charAt(0).toUpperCase()+w.slice(1).toLowerCase()).join('');
+// tenta achar no pedido o tema, o nome e a idade do aniversariante
+function dadosPost(p){
+  const d=String(p.descricao||'');const L=d.split(/\n/)[0];
+  const idade=(d.match(/(\d{1,2})\s*(?:anos|aninhos|ano\b)/i)||[])[1]||'';
+  let nome=(d.match(/\b(?:nome|aniversariante)\s*[:\-]?\s*([A-ZÀ-Ý][a-zà-ÿ]+)/)||[])[1]||(d.match(/\b(?:d[oa]|para)\s+([A-ZÀ-Ý][a-zà-ÿ]{2,})/)||[])[1]||(d.match(/([A-ZÀ-Ý][a-zà-ÿ]{2,})\s*,?\s*\d{1,2}\s*(?:anos|aninhos|ano\b)/)||[])[1]||'';
+  let tema=(d.match(/\btema\s*[:\-]?\s*([^,.\n]+)/i)||[])[1]||L.replace(/\b(nome|idade)\b.*$/i,'');
+  tema=tema.replace(/\d{1,2}\s*(anos|aninhos)/i,'').replace(new RegExp('\\b'+(nome||'@@')+'\\b'),'').replace(/\b(tema|bolo)\b/gi,' ').replace(/[,:;\-\s]+$/,'').replace(/(\s+(para|d[oa]s?|[aoe]|com))+$/i,'').replace(/[,:;\-]+\s*$/,'').replace(/\s+/g,' ').trim().slice(0,40);
+  const genero=/\bda\s+[A-ZÀ-Ý]/.test(d)?'a':/\bdo\s+[A-ZÀ-Ý]/.test(d)?'o':'';
+  return{tema,nome,idade,genero};
+}
+function legendaPost(p,o,v){
+  o=o||dadosPost(p);v=v||0;
+  const em=emojisTema(o.tema),t=o.tema.trim(),n=o.nome.trim(),i=String(o.idade||'').trim(),g=o.genero==='a'?'da':o.genero==='o'?'do':'d'+(n&&/a$/i.test(n)?'a':'o');
+  const quem=n?(i?(+i===1?`o primeiro aninho ${g} ${n}`:`os ${i} ${+i<=6?'aninhos':'anos'} ${g} ${n}`):`o aniversário ${g} ${n}`):(i?`${+i===1?'o primeiro aninho':`os ${i} anos`}`:'um momento muito especial');
+  const tm=t?` ${t.charAt(0).toUpperCase()+t.slice(1)}`:'';
+  const frases=[
+    `${em.par} Um bolo cheio de cores, fofura e amor para celebrar ${quem}! 🎂✨\nCada detalhe feito com carinho para tornar esse dia ainda mais especial! ${em.par}`,
+    `${em.par} Alegria e muito carinho em cada detalhe! ${em.um}🎂✨\n\nBolo${tm} lindo para comemorar ${quem}! ${em.par}🎉`,
+    `${em.um} Bolo${tm||' personalizado'} para comemorar ${quem} ${em.um}`,
+    `${em.par} Feito com amor para celebrar ${quem}! 🎂\n\nBolo${tm} pensado em cada detalhe para deixar a festa ainda mais especial ✨`];
+  const tags=['#BoloPersonalizado',t&&'#'+camel(t),(i&&+i<=14)?(v%2?'#BoloInfantil':'#FestaInfantil'):'#BoloDecorado','#ConfeitariaComAmor',n&&i?`#${camel(n)}${i}${+i===1?'Ano':'Anos'}`:''].filter(Boolean);
+  return frases[v%frases.length]+(v%frases.length===2?'':'\n\n'+tags.join(' '));
 }
 const FMT_POST={feed:{t:'Feed 4:5',w:1080,h:1350},quadrado:{t:'Quadrado',w:1080,h:1080},stories:{t:'Stories',w:1080,h:1920}};
 const ESTILO_POST={logo:'Logo no canto',nada:'Só a foto',faixa:'Faixa com texto',moldura:'Moldura rosa'};
@@ -1280,6 +1297,7 @@ async function desenharPost(img,fmt,estilo,texto){
 function criarPost(id){
   const p=S.ped[id];if(!p)return;
   const fs=fotosDe(id);if(!fs.length){toast('Adicione as fotos do bolo primeiro.');return}
+  const dp=dadosPost(p);let lv=0,legMexida=false;
   const st={fmt:'feed',estilo:'logo',sel:fs.map((_,i)=>i),imgs:[],texto:textoFotoPost(p)};
   const sh=openSheet('Post para o Instagram',`<div class="stack">
     <div class="calc" data-pv style="align-items:center;min-height:200px;padding:8px"><span class="muted">Montando…</span></div>
@@ -1287,7 +1305,15 @@ function criarPost(id){
     <div class="field"><span class="lbl">Formato</span><div class="pills" data-fmt>${Object.entries(FMT_POST).map(([k,v])=>`<button type="button" class="pill" data-v="${k}" aria-pressed="${k===st.fmt}">${v.t}</button>`).join('')}</div></div>
     <div class="field"><span class="lbl">Estilo</span><div class="pills" data-est>${Object.entries(ESTILO_POST).map(([k,v])=>`<button type="button" class="pill" data-v="${k}" aria-pressed="${k===st.estilo}">${v}</button>`).join('')}</div></div>
     <div class="field" data-txtbox><label for="poTxt">Texto na foto</label><input id="poTxt" value="${esc(st.texto)}" maxlength="60" placeholder="Ex.: Tema jardim encantado"></div>
-    <div class="field"><label for="poLeg">Legenda</label><textarea id="poLeg" style="min-height:230px">${esc(legendaPost(p))}</textarea></div>
+    <h3 class="sub">Legenda</h3>
+    <div class="grid2">
+      <div class="field"><label for="poTema">Tema</label><input id="poTema" data-lg="tema" value="${esc(dp.tema)}" placeholder="Ex.: Sonic"></div>
+      <div class="field"><label for="poNome">Aniversariante</label><input id="poNome" data-lg="nome" value="${esc(dp.nome)}" placeholder="Ex.: Théo"></div>
+      <div class="field"><label for="poIdade">Idade</label><input id="poIdade" data-lg="idade" inputmode="numeric" value="${esc(dp.idade)}" placeholder="Ex.: 4"></div>
+      <div class="field"><span class="lbl">É</span><div class="pills" data-gen><button type="button" class="pill" data-g="o" aria-pressed="${dp.genero==='o'}">do (menino)</button><button type="button" class="pill" data-g="a" aria-pressed="${dp.genero==='a'}">da (menina)</button></div></div>
+    </div>
+    <div class="field"><label for="poLeg">Texto da legenda</label><textarea id="poLeg" style="min-height:190px">${esc(legendaPost(p,dp,0))}</textarea></div>
+    <button class="btn ghost" type="button" data-po="outra">↻ Outra legenda</button>
     <button class="btn primary" type="button" data-po="ig">Publicar no Instagram</button>
     <div class="grid2"><button class="btn" type="button" data-po="leg">Copiar legenda</button><button class="btn" type="button" data-po="save">Salvar fotos</button></div>
     <small class="muted">Ao tocar em Publicar, a legenda já fica copiada. No Instagram, escolha <b>Feed</b> (ou Stories), avance e <b>cole a legenda</b>.</small>
@@ -1311,6 +1337,7 @@ function criarPost(id){
     const pe=e.target.closest('[data-est] [data-v]');if(pe){st.estilo=pe.dataset.v;sh.querySelectorAll('[data-est] [data-v]').forEach(x=>x.setAttribute('aria-pressed',x===pe));preview();return}
     const b=e.target.closest('[data-po]');if(!b)return;const k=b.dataset.po;
     if(k==='leg'){copiar(leg.value,'Legenda copiada',leg);return}
+    if(k==='outra'){lv++;refazLeg();return}
     if(!st.sel.length){toast('Escolha pelo menos uma foto.');return}
     b.disabled=true;const t0=b.textContent;b.textContent='Preparando…';
     try{const files=await gerar();
@@ -1321,6 +1348,10 @@ function criarPost(id){
     finally{b.disabled=false;b.textContent=t0}
   });
   txt.addEventListener('input',()=>{clearTimeout(txt._t);txt._t=setTimeout(preview,350)});
+  const refazLeg=()=>{leg.value=legendaPost(p,dp,lv);legMexida=false};
+  leg.addEventListener('input',()=>{legMexida=true});
+  sh.querySelectorAll('[data-lg]').forEach(el=>el.addEventListener('input',()=>{dp[el.dataset.lg]=el.value;if(!legMexida)refazLeg()}));
+  sh.querySelector('[data-gen]').addEventListener('click',e=>{const b=e.target.closest('[data-g]');if(!b)return;dp.genero=b.dataset.g;sh.querySelectorAll('[data-g]').forEach(x=>x.setAttribute('aria-pressed',x===b));if(!legMexida)refazLeg()});
 }
 // tela de pedido finalizado: fotos, post e avaliação
 function pedidoFinalizado(id){
