@@ -52,3 +52,10 @@ Sirva a pasta com qualquer servidor estático (ex.: `npx serve .`). Para trazer 
 - `tamanhoDe` tira o tamanho da descrição (1LT → 1000 ml, 395G → 395 g). Caixa, cake board, base, fita etc. viram `cat: 'embalagem'` (unidade `un`).
 - Na conferência (`openRevisao`), o app reconhece o que já foi comprado pelo código da loja (`cods: ['<cnpj>:<cod>']` no ingrediente) ou pela descrição (`descNota`).
 - Embalagem por tamanho: o tamanho guarda `embItens: [{ingId, qtd}]`; `custoEmbTam` soma e `calcPedido` usa esse valor como embalagem do pedido (sem embalagem escolhida, usa `embalagemPadrao` dos Ajustes).
+
+## Pagamentos e recibo
+
+- No pedido salvo, "Registrar pagamento" (`formPagamento`): referente a Sinal / Restante / Valor total (valor sugerido pelo `sinalPct` e pelo saldo), forma Pix, cartão de crédito (parcelas), débito, dinheiro ou transferência, data e nome no recibo.
+- Fica em `p.pagamentos: [{id, num, data, valor, tipo, forma, parcelas, nome}]`; `p.sinal` guarda a soma (`totalPago`), então saldo e "A receber" continuam iguais. O primeiro pagamento muda o pedido de Orçamento para Confirmado. Pedido antigo com sinal anotado à mão vira um pagamento `antigo: true` (sem recibo).
+- Número do recibo: sequência única (`cfg.reciboSeq`, `nRecibo`).
+- `verRecibo`: prévia, "Enviar recibo no WhatsApp" (Compartilhar do celular com o PDF e a mensagem; sem isso, salva o PDF e abre a conversa), "Salvar PDF", mensagem editável (`textoRecibo`) e "Desfazer este pagamento". O recibo (`imagemRecibo`/`pdfRecibo`) é desenhado em canvas como o orçamento, com valor por extenso (`extenso`), referente a sinal/restante/total, forma, resumo (valor do pedido, recebido até aquele recibo, falta pagar ou quitado), cidade e data, assinatura e contatos clicáveis.

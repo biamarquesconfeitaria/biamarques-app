@@ -769,7 +769,7 @@ function formPed(id,prefill){
   let autoAdic=p.adicEspecial===''||p.adicEspecial==null;
   const fdt=iso=>{const d=new Date(iso);return isNaN(d)?'':`${pad(d.getDate())}/${pad(d.getMonth()+1)} às ${pad(d.getHours())}h${pad(d.getMinutes())}`};
   const sh=openSheet(id?'Pedido':'Novo pedido',`<form class="f" id="fPed">
-    ${p.aceite?`<div class="note" style="border:1px solid var(--good)"><b style="color:var(--good)">Aceito pelo cliente</b> em ${fdt(p.aceite.data)}: ${esc(p.aceite.nome)}${p.aceite.whats?' · '+esc(p.aceite.whats):''}.${p.status==='orcamento'?' Quando o sinal cair, coloque o valor em “Sinal recebido” e mude a situação para Confirmado.':''}</div>`:p.linkVistoEm?`<div class="note">O cliente abriu o link do pedido em ${fdt(p.linkVistoEm)}.</div>`:''}
+    ${p.aceite?`<div class="note" style="border:1px solid var(--good)"><b style="color:var(--good)">Aceito pelo cliente</b> em ${fdt(p.aceite.data)}: ${esc(p.aceite.nome)}${p.aceite.whats?' · '+esc(p.aceite.whats):''}.${p.status==='orcamento'?' Quando o sinal cair, toque em “Registrar pagamento” e o pedido passa para Confirmado.':''}</div>`:p.linkVistoEm?`<div class="note">O cliente abriu o link do pedido em ${fdt(p.linkVistoEm)}.</div>`:''}
     <div class="field"><label for="pCli">Nome do cliente</label><input id="pCli" name="cliente" required value="${esc(p.cliente)}" placeholder="Nome" autocomplete="off"></div>
     <div class="field"><label for="pTel">WhatsApp</label><input id="pTel" name="telefone" type="tel" inputmode="tel" value="${esc(p.telefone)}" placeholder="(19) 98888-7777"></div>
     <div class="grid2">
@@ -793,8 +793,10 @@ function formPed(id,prefill){
     <div class="calc" id="pCalc"></div>
     <div class="grid2">
       <div class="field"><label for="pValor">Valor total (R$)</label><input id="pValor" name="valor" inputmode="decimal" value="${inVal(p.valor)}" placeholder="0,00"></div>
-      <div class="field"><label for="pSinal">Sinal recebido (R$)</label><input id="pSinal" name="sinal" inputmode="decimal" value="${inVal(p.sinal)}" placeholder="0,00"></div>
+      ${id?`<div class="field"><span class="lbl">Recebido</span><input type="hidden" name="sinal" value="${inVal(totalPago(p))}"><div class="num" style="font-size:1.25rem;font-weight:800;padding:8px 0" data-pagototal>${brl(totalPago(p))}</div></div>`
+        :`<div class="field"><label for="pSinal">Sinal recebido (R$)</label><input id="pSinal" name="sinal" inputmode="decimal" value="${inVal(p.sinal)}" placeholder="0,00"></div>`}
     </div>
+    ${id?`<div class="field" data-pgs></div>`:''}
     <div class="row between muted num wrapflex" id="pSaldo" style="font-size:.9rem"></div>
     <div class="field"><label for="pLink">Link de pagamento (cartão)</label><input id="pLink" name="linkPag" type="url" value="${esc(p.linkPag||'')}" placeholder="${esc(S.cfg.linkPagamento||'https://…')}"><small>${S.cfg.linkPagamento?'Deixe em branco para usar o link padrão dos Ajustes.':'Cole aqui o link da maquininha, se o cliente for pagar no cartão.'}</small></div>
     <div class="calc" data-lucro></div>
@@ -808,6 +810,17 @@ function formPed(id,prefill){
     <div class="actions"><button class="btn primary" type="submit">Salvar pedido</button><button class="btn" type="button" id="pZap">Enviar via WhatsApp</button>${id?'<button class="btn danger" type="button" id="pDel">Excluir pedido</button>':''}</div>
   </form>`);
   const f=sh.querySelector('form');
+  const pgsBox=sh.querySelector('[data-pgs]');
+  const drawPgs=()=>{if(!pgsBox)return;const cur=S.ped[id]||p;const l=pagamentosDe(cur);
+    pgsBox.innerHTML=`${l.length?`<div class="list">${l.map(x=>x.antigo?`<div class="item static"><div class="main"><div class="t">Sinal anotado antes</div><div class="s">sem recibo</div></div><div class="end"><b>${brl(x.valor)}</b></div></div>`
+      :`<button type="button" class="item" data-recibo="${esc(x.id)}"><div class="main"><div class="t">${TIPOS_PG[x.tipo]||'Pagamento'} · ${esc(FORMAS_PG[x.forma]||'')}${x.forma==='credito'&&num(x.parcelas)>1?` ${num(x.parcelas)}x`:''}</div><div class="s">${x.data?fmtData(x.data):''} · Recibo Nº ${nRecibo(x.num)} ›</div></div><div class="end"><b>${brl(x.valor)}</b></div></button>`).join('')}</div>`
+      :(num(cur.sinal)?'':'<small class="muted">Nenhum pagamento registrado.</small>')}
+      <button type="button" class="btn${saldo(cur)>0||!num(cur.valor)?' primary':''}" data-regpg style="margin-top:8px">Registrar pagamento</button>`;
+    const tot=totalPago(cur);f.sinal.value=inVal(tot);const pt=sh.querySelector('[data-pagototal]');if(pt)pt.textContent=brl(tot);
+    if(cur.status&&f.status.value==='orcamento'&&cur.status!=='orcamento')f.status.value=cur.status};
+  if(pgsBox){drawPgs();pgsBox.addEventListener('atualizar',()=>{drawPgs();upd()});
+    pgsBox.addEventListener('click',e=>{const r=e.target.closest('[data-recibo]');if(r){verRecibo(id,r.dataset.recibo);return}
+      if(e.target.closest('[data-regpg]')){const d=read();if(num(d.valor)!==num(S.ped[id].valor)){save('ped',id,{...S.ped[id],...d})}formPagamento(id,()=>{drawPgs();upd()})}})}
   const pill=(grp,cid,label,on)=>`<button type="button" class="pill" data-pick="${grp}" data-id="${esc(cid)}" aria-pressed="${on}">${label}</button>`;
   const addPill=tipo=>`<button type="button" class="pill add" data-add="${tipo}">+ ${TIPOS[tipo].add}</button>`;
   const drawPills=()=>{
@@ -827,7 +840,7 @@ function formPed(id,prefill){
     adicEspecial:f.adicEspecial.value.trim()===''?'':num(f.adicEspecial.value),decoracoes:st.decoracoes.slice(),cardapioId:p.cardapioId||'',
     bolo:{tamanho:t?t.nome:'',fatias:t?num(t.fatias):0,massa:nomeComp(st.massaId),recheios:st.recheioIds.map(nomeComp).filter(Boolean),cobertura:nomeComp(st.coberturaId),topper:st.topper?nomeComp(st.topperId):'',decoracoes:st.decoracoes.slice()},
     descricao:f.descricao.value.trim(),horas:f.horas.value.trim()===''?'':num(f.horas.value),embalagem:f.embalagem.value.trim()===''?'':num(f.embalagem.value),extras:num(f.extras.value),
-    valor:num(f.valor.value),sinal:num(f.sinal.value),linkPag:f.linkPag.value.trim(),linkToken:(id&&S.ped[id]&&S.ped[id].linkToken)||p.linkToken||'',aceite:(id&&S.ped[id]&&S.ped[id].aceite)||null,linkVistoEm:(id&&S.ped[id]&&S.ped[id].linkVistoEm)||'',status:f.status.value,obs:f.obs.value.trim(),criado:p.criado||new Date().toISOString()}};
+    valor:num(f.valor.value),sinal:num(f.sinal.value),pagamentos:(id&&S.ped[id]&&S.ped[id].pagamentos)||p.pagamentos||[],linkPag:f.linkPag.value.trim(),linkToken:(id&&S.ped[id]&&S.ped[id].linkToken)||p.linkToken||'',aceite:(id&&S.ped[id]&&S.ped[id].aceite)||null,linkVistoEm:(id&&S.ped[id]&&S.ped[id].linkVistoEm)||'',status:f.status.value,obs:f.obs.value.trim(),criado:p.criado||new Date().toISOString()}};
   const upd=()=>{
     let c=calcPedido(read());
     if(c.temEsp&&autoAdic&&c.tam&&num(c.tam.adicEspecial)){f.adicEspecial.value=inVal(num(c.tam.adicEspecial));c=calcPedido(read())}
@@ -1109,6 +1122,173 @@ async function pdfOrcamento(p,pv,cod){
   }
   doc.setProperties({title:`${TITULO_DOC[p.status]==='ORÇAMENTO'?'Orçamento':'Pedido'} · ${p.cliente||''} · ${S.cfg.nome||''}`,author:S.cfg.nome||''});
   return{blob:doc.output('blob'),cv,links};
+}
+/* ---------- pagamentos e recibo ---------- */
+const FORMAS_PG={pix:'Pix',credito:'Cartão de crédito',debito:'Cartão de débito',dinheiro:'Dinheiro',transferencia:'Transferência'};
+const TIPOS_PG={sinal:'Sinal',restante:'Restante',total:'Valor total'};
+const pagamentosDe=p=>Array.isArray(p&&p.pagamentos)?p.pagamentos:[];
+// quanto já foi pago: soma dos pagamentos registrados (ou o sinal anotado à mão, nos pedidos antigos)
+const totalPago=p=>{const l=pagamentosDe(p);return l.length?Math.round(l.reduce((s,x)=>s+num(x.valor),0)*100)/100:num(p.sinal)};
+function extenso(v){
+  const u=['zero','um','dois','três','quatro','cinco','seis','sete','oito','nove','dez','onze','doze','treze','catorze','quinze','dezesseis','dezessete','dezoito','dezenove'];
+  const d=['','','vinte','trinta','quarenta','cinquenta','sessenta','setenta','oitenta','noventa'];
+  const c=['','cento','duzentos','trezentos','quatrocentos','quinhentos','seiscentos','setecentos','oitocentos','novecentos'];
+  const ate999=n=>{if(n===100)return'cem';const p=[];const h=Math.floor(n/100),r=n%100;if(h)p.push(c[h]);if(r){if(r<20)p.push(u[r]);else{const dz=Math.floor(r/10),un=r%10;p.push(d[dz]+(un?' e '+u[un]:''))}}return p.join(' e ')};
+  const inteiro=n=>{if(!n)return'zero';const mil=Math.floor(n/1000),r=n%1000;const p=[];if(mil)p.push(mil===1?'mil':ate999(mil)+' mil');if(r)p.push(ate999(r));return p.join(r&&(r<100||r%100===0)?' e ':' ')};
+  v=Math.round(num(v)*100);const re=Math.floor(v/100),ce=v%100;const p=[];
+  if(re)p.push(`${inteiro(re)} ${re===1?'real':'reais'}`);
+  if(ce)p.push(`${ate999(ce)} ${ce===1?'centavo':'centavos'}`);
+  return p.join(' e ')||'zero real';
+}
+const nRecibo=n=>String(n||0).padStart(4,'0');
+const cidadeCfg=()=>{const e=String(S.cfg.endereco||'').split(',').map(x=>x.trim()).filter(Boolean);return e.length>1?e[e.length-1].replace(/\s*-\s*[A-Z]{2}$/,''):''};
+function viaPg(pg){return pg.forma==='credito'?`cartão de crédito${num(pg.parcelas)>1?` em ${num(pg.parcelas)}x`:''}`:pg.forma==='debito'?'cartão de débito':pg.forma==='pix'?'Pix':(FORMAS_PG[pg.forma]||'').toLowerCase()}
+function referentePg(p,pg){
+  const b=p.bolo||{};const bolo=b.tamanho?(/^bol/i.test(b.tamanho)?`do ${b.tamanho}`:`do bolo ${b.tamanho}`):'do bolo';
+  const d=parseD(p.entrega);const data=d?` para ${WDL[d.getDay()]}, ${pad(d.getDate())}/${pad(d.getMonth()+1)}`:'';
+  const pct=num(p.valor)?Math.round(num(pg.valor)/num(p.valor)*100):0;
+  if(pg.tipo==='sinal')return`ao sinal${pct&&pct<100?` (${pct}%)`:''} do pedido ${bolo}${data}`;
+  if(pg.tipo==='restante')return`ao restante do pagamento do pedido ${bolo}${data}`;
+  return`ao pagamento total do pedido ${bolo}${data}`;
+}
+// pago até este recibo (inclusive), para o recibo antigo continuar mostrando o saldo daquele dia
+function pagoAte(p,pg){const l=pagamentosDe(p);const i=l.findIndex(x=>x.id===pg.id);return Math.round(l.slice(0,i<0?l.length:i+1).reduce((s,x)=>s+num(x.valor),0)*100)/100}
+async function imagemRecibo(p,pg){
+  await fontsReady();
+  const logo=await loadImg(LOGO).catch(()=>null);
+  const W=1080,P=72,c=S.cfg;const links=[];
+  const insta=c.instagram?`https://instagram.com/${encodeURIComponent(c.instagram.replace(/^@/,'').trim())}`:'';
+  const zapUrl=c.whatsapp?zapHref(c.whatsapp,''):'';
+  const pago=pagoAte(p,pg),falta=Math.max(0,Math.round((num(p.valor)-pago)*100)/100);
+  const desenhar=ctx=>{
+    links.length=0;
+    ctx.fillStyle=IMG.bg;ctx.fillRect(0,0,W,ctx.canvas.height);
+    ctx.fillStyle=IMG.pink;ctx.fillRect(0,0,W,440);
+    if(logo){ctx.save();ctx.beginPath();ctx.arc(W/2,130,95,0,Math.PI*2);ctx.clip();ctx.drawImage(logo,W/2-95,35,190,190);ctx.restore()}
+    ctx.textAlign='center';ctx.fillStyle=IMG.brand;ctx.font='700 42px "Josefin Sans", sans-serif';
+    const nome=c.nome||'Bia Marques Confeitaria';const m=nome.match(/^(.*?)\s+(confeitaria)$/i);
+    spaced(ctx,(m?m[1]:nome).toUpperCase(),W/2,280,6);if(m){ctx.font='78px "Allura", cursive';ctx.fillText(m[2],W/2,352)}
+    ctx.fillStyle=IMG.ink;ctx.font='700 40px "Josefin Sans", sans-serif';spaced(ctx,`RECIBO Nº ${nRecibo(pg.num)}`,W/2,418,5);
+    ctx.textAlign='left';let y=500;
+    ctx.fillStyle=IMG.pink;rr(ctx,P,y,W-2*P,150,28);ctx.fill();
+    ctx.fillStyle=IMG.muted;ctx.font='600 24px "Figtree", sans-serif';spaced(ctx,'VALOR RECEBIDO',P+36,y+58,2);
+    ctx.fillStyle=IMG.ink;ctx.font='700 30px "Figtree", sans-serif';ctx.fillText(`${TIPOS_PG[pg.tipo]||'Pagamento'} · ${FORMAS_PG[pg.forma]||''}${pg.forma==='credito'&&num(pg.parcelas)>1?` em ${num(pg.parcelas)}x`:''}`,P+36,y+108);
+    ctx.textAlign='right';ctx.fillStyle=IMG.accent;ctx.font='800 64px "Figtree", sans-serif';ctx.fillText(brl(pg.valor),W-P-36,y+100);ctx.textAlign='left';
+    y+=220;
+    const txt=`Recebi de ${pg.nome||p.cliente||'cliente'} a importância de ${brl(pg.valor)} (${extenso(pg.valor)}), referente ${referentePg(p,pg)}, pago via ${viaPg(pg)}.`+(falta<=0?' Pelo que dou plena quitação do valor do pedido.':'');
+    ctx.fillStyle=IMG.ink;ctx.font='500 34px "Figtree", sans-serif';lines(ctx,txt,W-2*P,9).forEach(l=>{ctx.fillText(l,P,y);y+=50});
+    y+=30;
+    ctx.fillStyle=IMG.brand;ctx.font='700 34px "Josefin Sans", sans-serif';spaced(ctx,'RESUMO DO PEDIDO',P,y,3);y+=20;ctx.fillStyle=IMG.soft;ctx.fillRect(P,y,W-2*P,4);y+=58;
+    const linha=(a,b,cor)=>{ctx.fillStyle=IMG.muted;ctx.font='500 32px "Figtree", sans-serif';ctx.fillText(a,P,y);ctx.textAlign='right';ctx.fillStyle=cor||IMG.ink;ctx.font='700 32px "Figtree", sans-serif';ctx.fillText(b,W-P,y);ctx.textAlign='left';y+=54};
+    linha('Valor do pedido',brl(p.valor));
+    linha('Total recebido',brl(pago));
+    linha(falta>0?'Falta pagar':'Situação',falta>0?brl(falta):'Pedido quitado',falta>0?IMG.accent:'#4F7A2E');
+    y+=40;
+    const d=parseD(pg.data)||new Date();const cid=cidadeCfg();
+    ctx.fillStyle=IMG.ink;ctx.font='500 30px "Figtree", sans-serif';ctx.fillText(`${cid?cid+', ':''}${d.getDate()} de ${MES[d.getMonth()]} de ${d.getFullYear()}.`,P,y);y+=150;
+    ctx.strokeStyle=IMG.ink;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(W/2-260,y);ctx.lineTo(W/2+260,y);ctx.stroke();y+=50;
+    ctx.textAlign='center';ctx.fillStyle=IMG.ink;ctx.font='700 32px "Figtree", sans-serif';ctx.fillText(c.pixNome||nome,W/2,y);y+=42;
+    ctx.fillStyle=IMG.muted;ctx.font='500 26px "Figtree", sans-serif';ctx.fillText(nome,W/2,y);y+=60;
+    const cont=[c.whatsapp&&['WhatsApp '+c.whatsapp,zapUrl],c.instagram&&[c.instagram,insta]].filter(Boolean);
+    if(cont.length){ctx.font='700 27px "Figtree", sans-serif';const sep='   ·   ';const ws=cont.map(([t])=>ctx.measureText(t).width),wsep=ctx.measureText(sep).width;let x=W/2-(ws.reduce((a,b)=>a+b,0)+wsep*(cont.length-1))/2;ctx.textAlign='left';
+      cont.forEach(([t,u],i)=>{ctx.fillStyle=IMG.accent;ctx.fillText(t,x,y);if(u)links.push({x:x-6,y:y-34,w:ws[i]+12,h:46,url:u});x+=ws[i];if(i<cont.length-1){ctx.fillStyle=IMG.muted;ctx.fillText(sep,x,y);x+=wsep}});y+=40}
+    ctx.textAlign='center';y+=50;ctx.fillStyle=IMG.brand;ctx.font='64px "Allura", cursive';ctx.fillText('Obrigada pela preferência!',W/2,y+20);
+    ctx.textAlign='left';y+=80;ctx.fillStyle=IMG.pink;ctx.fillRect(0,y,W,24);y+=24;
+    return y;
+  };
+  const t=document.createElement('canvas');t.width=W;t.height=10;const H=desenhar(t.getContext('2d'));
+  const cv=document.createElement('canvas');cv.width=W;cv.height=H;desenhar(cv.getContext('2d'));
+  return{cv,links:links.slice()};
+}
+async function pdfRecibo(p,pg){
+  const {cv,links}=await imagemRecibo(p,pg);
+  const JsPDF=await getJsPDF();
+  const k=0.5,w=cv.width*k,h=cv.height*k;
+  const doc=new JsPDF({orientation:'p',unit:'pt',format:[w,h],compress:true});
+  doc.addImage(cv.toDataURL('image/jpeg',.9),'JPEG',0,0,w,h);
+  links.forEach(l=>doc.link(l.x*k,l.y*k,l.w*k,l.h*k,{url:l.url}));
+  doc.setProperties({title:`Recibo ${nRecibo(pg.num)} · ${pg.nome||p.cliente||''} · ${S.cfg.nome||''}`,author:S.cfg.nome||''});
+  return{blob:doc.output('blob'),cv};
+}
+function textoRecibo(p,pg){
+  const prim=String(pg.nome||p.cliente||'').trim().split(/\s+/)[0];
+  const pago=pagoAte(p,pg),falta=Math.max(0,Math.round((num(p.valor)-pago)*100)/100);
+  const d=parseD(p.entrega);
+  const L=[`Olá${prim?', '+prim:''}! Recebemos o seu pagamento de ${brl(pg.valor)} via ${viaPg(pg)}, referente ${referentePg(p,pg)}.`];
+  if(pagamentosDe(p).filter(x=>!x.antigo)[0]===pg||pagamentosDe(p).filter(x=>!x.antigo)[0]&&pagamentosDe(p).filter(x=>!x.antigo)[0].id===pg.id)L.push('Seu pedido está confirmado! 🎂');
+  L.push(falta>0?`Falta pagar ${brl(falta)}${d?' até a retirada':''}.`:'Pedido quitado. Muito obrigada!');
+  L.push('Segue o recibo.','',S.cfg.nome||'');
+  return L.join('\n');
+}
+// Registrar pagamento: grava no pedido, confirma o pedido no primeiro pagamento e já abre o recibo
+function formPagamento(id,onSaved){
+  const p=S.ped[id];if(!p)return;
+  const v=num(p.valor),pago=totalPago(p),falta=Math.max(0,Math.round((v-pago)*100)/100);
+  const sinal=Math.round(v*num(S.cfg.sinalPct)/100*100)/100;
+  let tipo=pago>0?(falta>0?'restante':'total'):'sinal';
+  const valorDe=t=>t==='sinal'?sinal:t==='restante'?falta:(pago>0?falta:v);
+  const sh=openSheet('Registrar pagamento',`<form class="f">
+    <p class="muted" style="margin:0">${esc(p.cliente||'Cliente')} · pedido de ${brl(v)}${pago?` · já recebido ${brl(pago)}`:''}</p>
+    <div class="field"><span class="lbl">Referente a</span><div class="pills" data-tipo>${Object.entries(TIPOS_PG).map(([k,t])=>`<button type="button" class="pill" data-t="${k}" aria-pressed="${k===tipo}">${t}${k==='sinal'?` <small>${fmt(S.cfg.sinalPct)}%</small>`:''}</button>`).join('')}</div></div>
+    <div class="grid2">
+      <div class="field"><label for="pgV">Valor recebido (R$)</label><input id="pgV" name="valor" inputmode="decimal" value="${inVal(valorDe(tipo))}"></div>
+      <div class="field"><label for="pgD">Data</label><input id="pgD" name="data" type="date" value="${isoD(new Date())}"></div>
+    </div>
+    <div class="field"><span class="lbl">Forma de pagamento</span><div class="pills" data-forma>${Object.entries(FORMAS_PG).map(([k,t])=>`<button type="button" class="pill" data-f="${k}" aria-pressed="${k==='pix'}">${t}</button>`).join('')}</div></div>
+    <div class="field" data-parc hidden><label for="pgP">Parcelas</label><input id="pgP" name="parcelas" inputmode="numeric" value="1"></div>
+    <div class="field"><label for="pgN">Nome no recibo</label><input id="pgN" name="nome" value="${esc((p.aceite&&p.aceite.nome)||p.cliente||'')}"></div>
+    <div class="note" data-res></div>
+    <div class="actions"><button class="btn primary" type="submit">Salvar e gerar recibo</button></div>
+  </form>`,2);
+  const f=sh.querySelector('form');let forma='pix';
+  const res=()=>{const val=num(f.valor.value),rest=Math.max(0,Math.round((v-pago-val)*100)/100);
+    sh.querySelector('[data-res]').innerHTML=val?(rest>0?`Depois deste pagamento, falta <b>${brl(rest)}</b>.`:'Com este pagamento, o pedido fica <b>quitado</b>.')+(p.status==='orcamento'?' O pedido passa para <b>Confirmado</b>.':''):'Informe o valor recebido.'};
+  sh.querySelector('[data-tipo]').addEventListener('click',e=>{const b=e.target.closest('[data-t]');if(!b)return;tipo=b.dataset.t;sh.querySelectorAll('[data-t]').forEach(x=>x.setAttribute('aria-pressed',x===b));f.valor.value=inVal(valorDe(tipo));res()});
+  sh.querySelector('[data-forma]').addEventListener('click',e=>{const b=e.target.closest('[data-f]');if(!b)return;forma=b.dataset.f;sh.querySelectorAll('[data-f]').forEach(x=>x.setAttribute('aria-pressed',x===b));sh.querySelector('[data-parc]').hidden=forma!=='credito'});
+  f.addEventListener('input',res);res();
+  f.addEventListener('submit',async e=>{e.preventDefault();
+    const val=Math.round(num(f.valor.value)*100)/100;if(!(val>0)){toast('Informe o valor recebido.');return}
+    const seq=Math.max(num(S.cfg.reciboSeq),...Object.values(S.ped).flatMap(x=>pagamentosDe(x).map(y=>num(y.num))))+1;
+    const pg={id:uid(),num:seq,data:f.data.value||isoD(new Date()),valor:val,tipo,forma,parcelas:forma==='credito'?Math.max(1,Math.round(num(f.parcelas.value))||1):1,nome:f.nome.value.trim()||p.cliente||'',criado:new Date().toISOString()};
+    const cur=S.ped[id]||p;const lista=[...pagamentosDe(cur)];
+    // pedido antigo com sinal anotado à mão: vira o primeiro pagamento, para a soma continuar certa
+    if(!lista.length&&num(cur.sinal)>0)lista.push({id:uid(),num:0,data:'',valor:num(cur.sinal),tipo:'sinal',forma:'',parcelas:1,nome:cur.cliente||'',antigo:true});
+    lista.push(pg);
+    const novo={...cur,pagamentos:lista,sinal:Math.round(lista.reduce((s,x)=>s+num(x.valor),0)*100)/100,status:cur.status==='orcamento'?'confirmado':cur.status};
+    await save('ped',id,novo);saveCfg({reciboSeq:seq});
+    closeSheet(2);if(onSaved)onSaved(novo);verRecibo(id,pg.id);
+  });
+}
+function verRecibo(id,pgId){
+  const p=S.ped[id];const pg=p&&pagamentosDe(p).find(x=>x.id===pgId);if(!pg)return;
+  const nomeArq=`recibo-${nRecibo(pg.num)}-${semAcento(pg.nome||p.cliente||'cliente').toLowerCase().replace(/[^a-z0-9]+/g,'-').slice(0,30)}.pdf`;
+  const txt=textoRecibo(p,pg);
+  const sh=openSheet(`Recibo Nº ${nRecibo(pg.num)}`,`<div class="stack">
+    <div class="calc" data-prev style="align-items:center;min-height:120px"><span class="muted">Montando o recibo…</span></div>
+    <button class="btn primary" type="button" data-rc="share">Enviar recibo no WhatsApp</button>
+    <button class="btn" type="button" data-rc="save">Salvar PDF</button>
+    <div class="field"><label for="rcTxt">Mensagem para o cliente</label><textarea id="rcTxt" style="min-height:150px">${esc(txt)}</textarea></div>
+    <a class="btn" data-rc="zap" href="#" target="_blank" rel="noopener">Enviar só a mensagem</a>
+    <button class="btn danger" type="button" data-rc="del">Desfazer este pagamento</button>
+  </div>`,2);
+  const ta=sh.querySelector('#rcTxt'),zap=sh.querySelector('[data-rc="zap"]');
+  const setZap=()=>{zap.href=zapHref(p.telefone,ta.value)};setZap();ta.addEventListener('input',setZap);
+  let blob=null,url='';
+  const pronto=pdfRecibo(p,pg).then(async r=>{blob=r.blob;const prev=await new Promise(res=>r.cv.toBlob(res,'image/jpeg',.85));url=URL.createObjectURL(prev);sh.querySelector('[data-prev]').innerHTML=`<img src="${url}" alt="Prévia do recibo" style="width:100%;border-radius:10px;border:1px solid var(--line)">`},()=>{sh.querySelector('[data-prev]').innerHTML='<span class="muted">Não consegui montar o recibo agora. Tente de novo.</span>'});
+  sh.addEventListener('click',async e=>{const b=e.target.closest('[data-rc]');if(!b)return;const k=b.dataset.rc;
+    if(k==='zap')return;
+    if(k==='del'){armDelete(b,async()=>{const cur=S.ped[id];const lista=pagamentosDe(cur).filter(x=>x.id!==pg.id);
+      const soma=Math.round(lista.reduce((s,x)=>s+num(x.valor),0)*100)/100;await save('ped',id,{...cur,pagamentos:lista,sinal:soma});closeSheet(2);toast('Pagamento desfeito');const s=document.querySelector('#sheetRoot [data-pgs]');if(s)s.dispatchEvent(new Event('atualizar'))});return}
+    if(!blob){b.disabled=true;await pronto;b.disabled=false}
+    if(!blob){toast('Não consegui montar o recibo. Tente de novo.');return}
+    if(k==='share'){
+      const file=new File([blob],nomeArq,{type:'application/pdf'});
+      try{if(navigator.canShare&&navigator.canShare({files:[file]})){await navigator.share({files:[file],title:nomeArq,text:ta.value});return}}catch(er){if(er&&er.name==='AbortError')return}
+      try{await navigator.clipboard.writeText(ta.value)}catch(_){}
+      const dl=await getDownloads();if(dl)await dl.save({filename:nomeArq,data:blob}).catch(()=>{});
+      window.open(zapHref(p.telefone,ta.value),'_blank','noopener');toast('PDF salvo. Na conversa, anexe o recibo.');return}
+    if(k==='save'){const dl=await getDownloads();if(!dl){toast('Não consegui salvar neste aparelho.');return}dl.save({filename:nomeArq,data:blob}).then(()=>toast('Recibo salvo'),er=>{if(!(er&&er.code==='declined'))toast('Não consegui salvar. Tente de novo.')})}
+  });
 }
 function novoToken(){const t=new Uint8Array(32);crypto.getRandomValues(t);return btoa(String.fromCharCode(...t)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')}
 const linkUrl=t=>new URL('pedido.html',location.href.split('#')[0]).href+'#'+t;
