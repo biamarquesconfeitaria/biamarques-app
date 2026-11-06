@@ -1232,15 +1232,15 @@ function legendaPost(p){
   L.push(tema?`✨ ${tema} ✨`:'✨ Mais um bolo feito com muito carinho ✨');
   if(b.tamanho||sabor)L.push('',`🎂 ${[b.tamanho,sabor].filter(Boolean).join(' · ')}`);
   if(b.topper)L.push(`🎀 Topo de bolo ${b.topper.toLowerCase()}`);
-  L.push('','Cada detalhe pensado para deixar o seu momento ainda mais especial. 💕');
+  L.push('','Bolo artesanal e personalizado, feito com muito carinho para o seu momento especial. 💕');
   L.push('',`📲 Encomendas pelo WhatsApp${c.whatsapp?' '+c.whatsapp:''}`);
-  if(c.endereco)L.push(`📍 Retirada em ${cidadeCfg()||c.endereco}`);
+  if(c.endereco)L.push(`📍 Retirada: ${c.endereco}`);
   const cid=semAcento(cidadeCfg()||'').toLowerCase().replace(/[^a-z]/g,'');
   L.push('',['#bolo','#bolodecorado','#bolopersonalizado','#confeitaria','#bolodeaniversario',cid&&'#'+cid,cid&&'#bolos'+cid,cid&&'#confeitaria'+cid,'#'+semAcento(c.nome||'biamarquesconfeitaria').toLowerCase().replace(/[^a-z]/g,'')].filter(Boolean).join(' '));
   return L.join('\n');
 }
 const FMT_POST={feed:{t:'Feed 4:5',w:1080,h:1350},quadrado:{t:'Quadrado',w:1080,h:1080},stories:{t:'Stories',w:1080,h:1920}};
-const ESTILO_POST={logo:'Logo no canto',faixa:'Faixa com texto',moldura:'Moldura rosa',nada:'Só a foto'};
+const ESTILO_POST={logo:'Logo no canto',nada:'Só a foto',faixa:'Faixa com texto',moldura:'Moldura rosa'};
 let logoImgCache=null;
 async function desenharPost(img,fmt,estilo,texto){
   await fontsReady();
@@ -1264,7 +1264,7 @@ async function desenharPost(img,fmt,estilo,texto){
     ctx.textAlign='left';return cv;
   }
   cover(ctx,img,0,0,W,H,0);
-  if(estilo==='logo'){selo(W-110,H-110,74);return cv}
+  if(estilo==='logo'){selo(W-92,H-92,56);return cv}
   if(estilo==='faixa'){
     const fh=fmt==='stories'?340:250;const g=ctx.createLinearGradient(0,H-fh-120,0,H);g.addColorStop(0,'rgba(58,36,49,0)');g.addColorStop(.45,'rgba(58,36,49,.55)');g.addColorStop(1,'rgba(58,36,49,.85)');
     ctx.fillStyle=g;ctx.fillRect(0,H-fh-120,W,fh+120);
@@ -1280,7 +1280,7 @@ async function desenharPost(img,fmt,estilo,texto){
 function criarPost(id){
   const p=S.ped[id];if(!p)return;
   const fs=fotosDe(id);if(!fs.length){toast('Adicione as fotos do bolo primeiro.');return}
-  const st={fmt:'feed',estilo:'faixa',sel:fs.map((_,i)=>i),imgs:[],texto:textoFotoPost(p)};
+  const st={fmt:'feed',estilo:'logo',sel:fs.map((_,i)=>i),imgs:[],texto:textoFotoPost(p)};
   const sh=openSheet('Post para o Instagram',`<div class="stack">
     <div class="calc" data-pv style="align-items:center;min-height:200px;padding:8px"><span class="muted">Montando…</span></div>
     <div class="field"><span class="lbl">Fotos do post <small class="muted">(toque para tirar ou pôr)</small></span><div class="gal" data-sel></div></div>
