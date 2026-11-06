@@ -1,5 +1,5 @@
 // Rede primeiro (sempre pega a versão nova); sem internet, usa o que ficou em cache.
-const CACHE = 'bia-marques-v2';
+const CACHE = 'bia-marques-v3';
 const SHELL = ['./', 'index.html', 'config.js', 'manifest.webmanifest', 'vendor/supabase-2.117.3.js', 'vendor/qrcode-generator-1.4.4.min.js', 'vendor/jspdf-2.5.1.umd.min.js', 'icons/icon-192.png', 'icons/icon-512.png'];
 
 self.addEventListener('install', e => {

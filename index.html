@@ -267,7 +267,7 @@ async function initStore(){
   usuarioEmail=(sessao.user&&sessao.user.email)||'';
   try{const {data:membro,error}=await sb.rpc('bia_e_membro');if(error)throw error;if(!membro){telaAcesso('sem');return}}catch(e){telaAcesso('erro');return}
   try{S.db=nuvemDb(await carregarTudo())}catch(e){telaAcesso('erro');return}
-  S.mode='nuvem';document.body.classList.remove('acesso');subscribe();initSample();
+  S.mode='nuvem';document.body.classList.remove('acesso');subscribe();
 }
 async function carregarTudo(){
   const out=[];
@@ -487,21 +487,23 @@ function vReceitas(){
   <button class="btn primary fab" data-act="novaRec">+ Nova receita</button>`;
 }
 function vIngredientes(){
-  const segs=[['ing','Ingredientes'],['massa','Massas'],['recheio','Recheios'],['cobertura','Coberturas'],['topper','Toppers']];
+  const segs=[['ing','Ingredientes'],['emb','Embalagens'],['massa','Massas'],['recheio','Recheios'],['cobertura','Coberturas'],['topper','Toppers']];
   const segHtml=`<div class="filters" style="margin-bottom:14px">${segs.map(([k,t])=>`<button data-seg="${k}" aria-pressed="${k===segIng}">${t}</button>`).join('')}</div>`;
-  if(segIng!=='ing')return`<header class="top"><div><div class="eyebrow">Partes do bolo</div><h1>${TIPOS[segIng].pl}</h1></div></header>${segHtml}${vComps(segIng)}`;
-  let gs=Object.entries(S.ing).map(([id,g])=>({id,...g})).sort((a,b)=>(a.nome||'').localeCompare(b.nome||''));
+  if(segIng!=='ing'&&segIng!=='emb')return`<header class="top"><div><div class="eyebrow">Partes do bolo</div><h1>${TIPOS[segIng].pl}</h1></div></header>${segHtml}${vComps(segIng)}`;
+  const emb=segIng==='emb';
+  let gs=Object.entries(S.ing).map(([id,g])=>({id,...g})).filter(g=>isEmb(g)===emb).sort((a,b)=>(a.nome||'').localeCompare(b.nome||''));
   const temEx=gs.some(g=>g.exemplo);
   const q=buscaIng.trim().toLowerCase();
   const shown=q?gs.filter(g=>(g.nome||'').toLowerCase().includes(q)):gs;
-  return`<header class="top"><div><div class="eyebrow">O que você compra</div><h1>Ingredientes</h1></div></header>
+  return`<header class="top"><div><div class="eyebrow">O que você compra</div><h1>${emb?'Embalagens':'Ingredientes'}</h1></div></header>
   ${segHtml}
   ${notaCard()}
+  ${emb?`<p class="muted" style="margin:0 0 12px">Caixas, bases (cake board), fitas e o que mais vai com o bolo. Em Cardápio → Tamanhos, escolha a embalagem de cada tamanho: o custo entra sozinho no lucro do pedido.</p>`:''}
   ${temEx?`<div class="note" style="margin-bottom:12px">Os itens marcados como <b>exemplo</b> têm preços aproximados. Toque em cada um e coloque o preço que você paga.</div>`:''}
-  ${gs.length>6?`<input class="search" id="buscaIng" type="search" placeholder="Buscar ingrediente" value="${esc(buscaIng)}" autocomplete="off">`:''}
+  ${gs.length>6?`<input class="search" id="buscaIng" type="search" placeholder="Buscar ${emb?'embalagem':'ingrediente'}" value="${esc(buscaIng)}" autocomplete="off">`:''}
   <div class="section" style="margin-top:10px">${shown.length?`<div class="list">${shown.map(g=>{const u=UN[g.unidade]||'g';const pu=num(g.qtd)?num(g.preco)/num(g.qtd):0;const show=u==='un'?`${brl(pu)} / un`:`${brl(pu*(u==='g'?1000:1000))} / ${u==='g'?'kg':'litro'}`;return`<button class="item" data-ing="${esc(g.id)}"><div class="main"><div class="t">${esc(g.nome)}${g.exemplo?'<span class="tag">exemplo</span>':''}${badgeVar(g)}</div><div class="s">${brl(g.preco)} por ${fmt(g.qtd)} ${u}</div></div><div class="end"><b style="font-size:.9rem">${show}</b></div></button>`}).join('')}</div>`
-  :`<div class="empty"><strong>${gs.length?'Nada encontrado':'Nenhum ingrediente ainda'}</strong>${gs.length?'Tente outro nome.':'Comece pelo leite condensado: preço pago e peso da embalagem.'}</div>`}</div>
-  <button class="btn primary fab" data-act="novoIng">+ Ingrediente</button>`;
+  :emb?`<div class="empty"><strong>${gs.length?'Nada encontrado':'Nenhuma embalagem ainda'}</strong>${gs.length?'Tente outro nome.':'Leia uma nota com caixas e bases, ou cadastre a primeira embalagem.'}</div>`:`<div class="empty"><strong>${gs.length?'Nada encontrado':'Nenhum ingrediente ainda'}</strong>${gs.length?'Tente outro nome.':'Comece pelo leite condensado: preço pago e peso da embalagem.'}</div>`}</div>
+  <button class="btn primary fab" data-act="${emb?'novaEmb':'novoIng'}">+ ${emb?'Embalagem':'Ingrediente'}</button>`;
 }
 function vAjustes(){
   const c=S.cfg;
@@ -514,7 +516,7 @@ function vAjustes(){
       <div class="field"><label for="cMargem">Lucro padrão</label><input id="cMargem" name="margemPct" inputmode="decimal" value="${inVal(c.margemPct)}"><small>% sobre o custo</small></div>
       <div class="field"><label for="cInd">Gás, energia, água</label><input id="cInd" name="indiretosPct" inputmode="decimal" value="${inVal(c.indiretosPct)}"><small>% sobre os ingredientes</small></div>
       <div class="field"><label for="cHkg">Horas por kg</label><input id="cHkg" name="horasKg" inputmode="decimal" value="${inVal(c.horasKg)}"><small>tempo médio para cada kg de bolo</small></div>
-      <div class="field"><label for="cEmb">Embalagem padrão</label><input id="cEmb" name="embalagemPadrao" inputmode="decimal" value="${inVal(c.embalagemPadrao)}"><small>caixa, base e fita (R$)</small></div>
+      <div class="field"><label for="cEmb">Embalagem padrão</label><input id="cEmb" name="embalagemPadrao" inputmode="decimal" value="${inVal(c.embalagemPadrao)}"><small>caixa, base e fita (R$), para tamanhos sem embalagem escolhida</small></div>
       <div class="field"><label for="cSinal">Sinal pedido</label><input id="cSinal" name="sinalPct" inputmode="decimal" value="${inVal(c.sinalPct)}"><small>% do valor para confirmar</small></div>
     </div>
     <div class="grid2">
@@ -571,34 +573,38 @@ function armDelete(btn,fn){
 }
 
 /* ingrediente */
-function formIng(id){
-  const g=id?S.ing[id]:{nome:'',preco:'',qtd:'',unidade:'g'};
-  const sh=openSheet(id?'Editar ingrediente':'Novo ingrediente',`<form class="f" id="fIng">
-    <div class="field"><label for="iNome">Nome</label><input id="iNome" name="nome" required value="${esc(g.nome)}" placeholder="Ex.: Leite condensado"></div>
+function formIng(id,catNovo){
+  const g=id?S.ing[id]:{nome:'',preco:'',qtd:catNovo==='embalagem'?1:'',unidade:catNovo==='embalagem'?'un':'g',cat:catNovo||'ingrediente'};
+  const emb=isEmb(g),pal=emb?'embalagem':'ingrediente';
+  const sh=openSheet(id?`Editar ${pal}`:(emb?'Nova embalagem':'Novo ingrediente'),`<form class="f" id="fIng">
+    <div class="field"><label for="iNome">Nome</label><input id="iNome" name="nome" required value="${esc(g.nome)}" placeholder="${emb?'Ex.: Caixa com visor 21x21':'Ex.: Leite condensado'}"></div>
+    <div class="field"><label for="iCat">Tipo</label><select id="iCat" name="cat"><option value="ingrediente" ${emb?'':'selected'}>Ingrediente (vai na receita)</option><option value="embalagem" ${emb?'selected':''}>Embalagem (caixa, base, fita…)</option></select></div>
     <div class="grid3">
       <div class="field"><label for="iPreco">Preço pago</label><input id="iPreco" name="preco" inputmode="decimal" required value="${inVal(g.preco)}" placeholder="7,50"></div>
-      <div class="field"><label for="iQtd">Embalagem</label><input id="iQtd" name="qtd" inputmode="decimal" required value="${inVal(g.qtd)}" placeholder="395"></div>
+      <div class="field"><label for="iQtd">${emb?'Vem quantas':'Embalagem'}</label><input id="iQtd" name="qtd" inputmode="decimal" required value="${inVal(g.qtd)}" placeholder="${emb?'1':'395'}"></div>
       <div class="field"><label for="iUn">Unidade</label><select id="iUn" name="unidade">${Object.keys(UN).map(u=>`<option value="${u}" ${g.unidade===u?'selected':''}>${u}</option>`).join('')}</select></div>
     </div>
     <div class="note" id="iCalc"></div>
     ${(g.historico||[]).length?`<div class="field"><span class="lbl">Últimos preços</span><div class="list">${g.historico.slice(-5).reverse().map(h=>`<div class="item static"><div class="main"><div class="t num">${brl(h.preco)} <span class="muted" style="font-weight:400">por ${fmt(h.qtd)} ${esc(h.unidade||g.unidade)}</span></div><div class="s">${h.data?fmtData(h.data):'Preço anterior'}${h.loja?' · '+esc(h.loja):''}</div></div></div>`).join('')}</div></div>`:''}
-    <div class="actions"><button class="btn primary" type="submit">Salvar</button>${id?'<button class="btn danger" type="button" id="iDel">Excluir ingrediente</button>':''}</div>
+    <div class="actions"><button class="btn primary" type="submit">Salvar</button>${id?`<button class="btn danger" type="button" id="iDel">Excluir ${pal}</button>`:''}</div>
   </form>`);
   const f=sh.querySelector('form');
   const upd=()=>{const p=num(f.preco.value),q=num(f.qtd.value),u=f.unidade.value;sh.querySelector('#iCalc').textContent=q?`Sai a ${brl(p/q)} por ${u}${u!=='un'?` (${brl(p/q*1000)} por ${u==='g'?'kg':'litro'})`:''}.`:'Coloque o tamanho da embalagem, por exemplo 395 g ou 1000 ml.'};
   f.addEventListener('input',upd);upd();
   f.addEventListener('submit',e=>{e.preventDefault();
     const prev=id?S.ing[id]:null;const hoje=isoD(new Date());
-    const novo={nome:f.nome.value.trim(),preco:num(f.preco.value),qtd:num(f.qtd.value),unidade:f.unidade.value};
+    const novo={...(prev||{}),nome:f.nome.value.trim(),preco:num(f.preco.value),qtd:num(f.qtd.value),unidade:f.unidade.value,cat:f.cat.value};delete novo.exemplo;if(prev&&prev.exemplo&&!(num(prev.preco)!==num(f.preco.value)||num(prev.qtd)!==num(f.qtd.value)))novo.exemplo=true;
     const mudou=!prev||prev.exemplo||num(prev.preco)!==novo.preco||num(prev.qtd)!==novo.qtd||(prev.unidade||'g')!==novo.unidade;
     const hist=prev?histBase(prev):[];
     if(mudou)hist.push({data:hoje,preco:novo.preco,qtd:novo.qtd,unidade:novo.unidade,loja:null});
     novo.historico=hist.slice(-12);novo.atualizado=mudou?hoje:(prev.atualizado||null);
-    save('ing',id,novo);closeSheet();toast('Ingrediente salvo')});
+    save('ing',id,novo);closeSheet();toast(novo.cat==='embalagem'?'Embalagem salva':'Ingrediente salvo')});
   const del=sh.querySelector('#iDel');if(del)del.addEventListener('click',()=>{
     const usado=Object.values(S.rec).some(r=>(r.itens||[]).some(it=>it.ingId===id));
-    if(usado&&!del.classList.contains('armed'))toast('Atenção: este ingrediente é usado em receitas.');
-    armDelete(del,()=>{remove('ing',id);closeSheet();toast('Ingrediente excluído')})});
+    const usadoTam=Object.values(S.comp).some(c=>(c.embItens||[]).some(it=>it.ingId===id));
+    if((usado||usadoTam)&&!del.classList.contains('armed'))toast(usadoTam?'Atenção: esta embalagem está em um tamanho de bolo.':'Atenção: este ingrediente é usado em receitas.');
+    armDelete(del,()=>{remove('ing',id);closeSheet();toast(emb?'Embalagem excluída':'Ingrediente excluído')})});
+  f.cat.addEventListener('change',()=>{if(f.cat.value==='embalagem'&&f.unidade.value!=='un'){f.unidade.value='un';if(!num(f.qtd.value)||num(f.qtd.value)>=50)f.qtd.value='1';upd()}});
 }
 
 /* receita */
@@ -606,7 +612,7 @@ function formRec(id){
   const r=id?S.rec[id]:{nome:'',rendimentoKg:'',itens:[],embalagem:'',horas:'',margem:''};
   const draft={itens:(r.itens||[]).map(x=>({...x}))};
   if(!draft.itens.length)draft.itens.push({ingId:'',qtd:''});
-  const ings=Object.entries(S.ing).sort((a,b)=>(a[1].nome||'').localeCompare(b[1].nome||''));
+  const ings=Object.entries(S.ing).filter(([iid,g])=>!isEmb(g)||draft.itens.some(x=>x.ingId===iid)).sort((a,b)=>(a[1].nome||'').localeCompare(b[1].nome||''));
   const opts=sel=>`<option value="">Escolha…</option>`+ings.map(([iid,g])=>`<option value="${esc(iid)}" ${iid===sel?'selected':''}>${esc(g.nome)}</option>`).join('');
   const sh=openSheet(id?'Editar receita':'Nova receita',`<form class="f" id="fRec">
     <div class="field"><label for="rNome">Nome do bolo</label><input id="rNome" name="nome" required value="${esc(r.nome)}" placeholder="Ex.: Massa branca com brigadeiro"></div>
@@ -649,6 +655,9 @@ function custoLote(c,IM){IM=IM||S.ing;let t=0;(c.itens||[]).forEach(it=>{const g
 function custoKgComp(c,IM){if(!c)return 0;if(c.modo==='manual')return num(c.custoKg);const kg=num(c.rendeKg);return kg?custoLote(c,IM)/kg:0}
 const nomeComp=id=>(S.comp[id]&&S.comp[id].nome)||'';
 function resumoBolo(p){const b=p.bolo;if(!b)return'';return[b.tamanho,b.massa,(b.recheios||[]).join(' e '),b.cobertura,b.topper].filter(Boolean).join(' · ')}
+function custoEmbTam(t,IM){IM=IM||S.ing;let s=0;(t&&t.embItens||[]).forEach(it=>{const g=IM[it.ingId];if(g&&num(g.qtd))s+=num(g.preco)/num(g.qtd)*(num(it.qtd)||1)});return Math.round(s*100)/100}
+const temEmbTam=t=>!!(t&&(t.embItens||[]).some(it=>S.ing[it.ingId]));
+const embPadrao=t=>temEmbTam(t)?custoEmbTam(t):num(S.cfg.embalagemPadrao);
 function calcPedido(d){
   const tam=S.comp[d.tamanhoId];
   const m=S.comp[d.massaId],cob=S.comp[d.coberturaId];
@@ -665,7 +674,7 @@ function calcPedido(d){
   const ing=cm+cr+cc,ind=ing*num(S.cfg.indiretosPct)/100;
   const horas=(d.horas===''||d.horas==null)?peso*num(S.cfg.horasKg):num(d.horas);
   const mo=horas*num(S.cfg.valorHora);
-  const emb=(d.embalagem===''||d.embalagem==null)?num(S.cfg.embalagemPadrao):num(d.embalagem);
+  const emb=(d.embalagem===''||d.embalagem==null)?embPadrao(tam):num(d.embalagem);
   const custo=ing+ind+emb;
   const semCusto=[m,...recs,cob].filter(c=>c&&!custoKgComp(c)).map(c=>c.nome);
   return{tam,consultar,base,temEsp,adic,top,deco,total,ok:!!tam&&base>0,peso,cm,cr,cc,ing,ind,horas,mo,emb,custo,semCusto,nRec:recs.length};
@@ -687,7 +696,7 @@ function formComp(id,tipo,opts={}){
   tipo=c.tipo||tipo;const T=TIPOS[tipo];const isTop=tipo==='topper';
   const draft={modo:c.modo||'ingredientes',itens:(c.itens||[]).map(x=>({...x}))};
   if(!draft.itens.length)draft.itens.push({ingId:'',qtd:''});
-  const ings=Object.entries(S.ing).sort((a,b)=>(a[1].nome||'').localeCompare(b[1].nome||''));
+  const ings=Object.entries(S.ing).filter(([iid,g])=>!isEmb(g)||draft.itens.some(x=>x.ingId===iid)).sort((a,b)=>(a[1].nome||'').localeCompare(b[1].nome||''));
   const opt=sel=>`<option value="">Escolha…</option>`+ings.map(([iid,g])=>`<option value="${esc(iid)}" ${iid===sel?'selected':''}>${esc(g.nome)}</option>`).join('');
   const sh=openSheet(id?`Editar ${T.t.toLowerCase()}`:`Nov${tipo==='massa'||tipo==='cobertura'?'a':'o'} ${T.t.toLowerCase()}`,`<form class="f">
     <div class="field"><label for="k${L}Nome">Nome</label><input id="k${L}Nome" name="nome" required value="${esc(c.nome)}" placeholder="${esc(T.ex)}"></div>
@@ -837,7 +846,7 @@ function formPed(id,prefill){
     }
     const v=num(f.valor.value),sal=Math.max(0,v-num(f.sinal.value));
     sh.querySelector('#pSaldo').innerHTML=v?`<span>Sinal de ${fmt(S.cfg.sinalPct)}%: ${brl(v*num(S.cfg.sinalPct)/100)}</span><span>${sal?'Falta receber '+brl(sal):'Tudo pago'}</span>`:'';
-    f.horas.placeholder=fmt(c.peso*num(S.cfg.horasKg),1);f.embalagem.placeholder=inVal(S.cfg.embalagemPadrao);
+    f.horas.placeholder=fmt(c.peso*num(S.cfg.horasKg),1);f.embalagem.placeholder=inVal(embPadrao(c.tam));
     const lb=sh.querySelector('[data-lucro]');
     if(!c.tam||!v){lb.hidden=true}
     else if(!c.peso){lb.hidden=false;lb.innerHTML=`<span class="muted">Para ver o lucro, informe o peso aproximado de “${esc(c.tam.nome)}” no Cardápio, em Tamanhos.</span>`}
@@ -1236,59 +1245,89 @@ function alertaPrecos(){
   return`<a class="note warn" href="#ingredientes" style="margin-top:12px"><b class="up">Ficaram mais caros:</b> ${nomes}${sub.length>4?` e mais ${sub.length-4}`:''}. Confira os preços do cardápio.</a>`;
 }
 
-/* ---------- leitura de nota fiscal ---------- */
-let SAMPLE=null,SAMPLE_LIM=null,sampleState='carregando';
-const nota={files:[],urls:[],busy:false,msg:'',ctl:null};
-const nuvemLeitor={
-  async limits(){return{images:{maxCount:5}}},
-  async json(prompt,opts={}){
-    const imagens=await Promise.all((opts.images||[]).map(b=>new Promise((res,rej)=>{const fr=new FileReader();fr.onload=()=>res(String(fr.result).split(',')[1]);fr.onerror=rej;fr.readAsDataURL(b)})));
-    const {data,error}=await sb.functions.invoke('bia-ler-nota',{body:{prompt,imagens}});
-    if(opts.signal&&opts.signal.aborted)throw{code:'cancelled'};
-    if(error){let code='falha';
-      try{const r=error.context;if(r&&r.status===404)code='nao_instalada';else if(r&&r.json){const j=await r.json();code=j.erro||code}}catch(e){}
-      if(error.name==='FunctionsFetchError')code='sem_conexao';
-      throw{code}}
-    if(!data||!data.dados)throw{code:'invalid_json'};
-    return data.dados;
-  }
-};
-async function initSample(){
-  if(sb&&S.mode==='nuvem'){SAMPLE=nuvemLeitor;SAMPLE_LIM={maxCount:5};sampleState='on';render();return}
-  if(temNuvem()){sampleState='carregando';return}
-  try{
-    if(!(window.claude&&window.claude.use)){sampleState='off';render();return}
-    const s=await window.claude.use('sample');
-    const lim=s?await s.limits().catch(()=>null):null;
-    if(s&&lim&&lim.images){SAMPLE=s;SAMPLE_LIM=lim.images;sampleState='on'}else sampleState='off';
-  }catch(e){sampleState='off'}
-  render();
-}
+/* ---------- leitura de nota de compra (de graça: o texto é lido no próprio celular) ---------- */
+const nota={busy:false,msg:'',prog:0,etapa:'',cancel:false};
+let ocrWorker=null;
+const OCR_DIR=new URL('vendor/tesseract/',location.href).href;
 function notaCard(){
-  if(sampleState==='carregando')return'';
-  if(sampleState==='off')return`<div class="note" style="margin-bottom:12px">A leitura de nota fiscal funciona quando você entra com sua conta.</div>`;
-  if(nota.busy)return`<div class="drop"><div class="drop-t">Lendo a nota…</div><p class="muted" style="margin:0">Costuma levar de 20 segundos a 1 minuto. Deixe o app aberto.</p><div class="bar"><i></i></div><button class="btn" data-act="pararNota">Parar</button></div>`;
-  const n=nota.files.length;
+  if(nota.busy)return`<div class="drop"><div class="drop-t">Lendo a nota…</div><p class="muted" style="margin:0">${esc(nota.etapa||'Preparando')}${nota.prog?` · ${Math.round(nota.prog*100)}%`:''}. Deixe o app aberto.</p><div class="bar"><i></i></div><button class="btn" data-act="pararNota">Parar</button></div>`;
   return`<div class="drop" id="drop">
-    <div class="drop-t">Ler nota fiscal</div>
-    <p class="muted" style="margin:0">Tire uma foto do cupom do mercado. O app encontra os ingredientes, atualiza os preços e avisa o que ficou mais caro.</p>
-    ${n?`<div class="thumbs">${nota.urls.map((u,i)=>`<div class="th"><img src="${u}" alt="Foto ${i+1} da nota"><button type="button" data-rmfoto="${i}" aria-label="Remover foto ${i+1}">×</button></div>`).join('')}</div>`:''}
+    <div class="drop-t">Ler nota de compra</div>
+    <p class="muted" style="margin:0">Tire uma foto da nota. O app separa os itens, atualiza os preços dos ingredientes e embalagens e avisa o que ficou mais caro.</p>
     ${nota.msg?`<div class="note warn">${esc(nota.msg)}</div>`:''}
     <input class="vh" id="notaFile" type="file" accept="image/*" multiple tabindex="-1">
-    ${n?`<button class="btn primary block" data-act="lerNota">Ler nota (${n} foto${n>1?'s':''})</button><label class="btn block" for="notaFile">Adicionar outra foto</label>`:`<label class="btn primary block" for="notaFile">Tirar foto ou escolher imagem</label>`}
-    <small class="muted">Nota comprida? Tire mais de uma foto. No computador, dá para arrastar ou colar a imagem aqui.</small>
+    <label class="btn primary block" for="notaFile">Tirar foto da nota</label>
+    <button class="btn block" data-act="colarNota">Colar texto da nota</button>
+    <small class="muted">Foto reta, com a nota inteira e boa luz. Se preferir, copie o texto da foto pelo celular (Google Lens no Android, ou segure o dedo no texto da foto no iPhone) e toque em Colar texto.</small>
   </div>`;
 }
-function addNotaFiles(list){
-  const max=(SAMPLE_LIM&&SAMPLE_LIM.maxCount)||5;
-  for(const f of Array.from(list||[])){
-    if(!f||!f.type||!f.type.startsWith('image/'))continue;
-    if(nota.files.length>=max){toast(`Até ${max} fotos por nota.`);break}
-    nota.files.push(f);nota.urls.push(URL.createObjectURL(f));
-  }
-  nota.msg='';render();
+// recorta o papel, aumenta e deixa só preto e branco, que é o que a leitura entende melhor
+async function prepNota(file){
+  const url=URL.createObjectURL(file);
+  try{
+    const img=await new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=rej;i.src=url});
+    const W0=img.naturalWidth,H0=img.naturalHeight;
+    const k0=600/Math.max(W0,H0),sw=Math.max(1,Math.round(W0*k0)),shh=Math.max(1,Math.round(H0*k0));
+    const c0=document.createElement('canvas');c0.width=sw;c0.height=shh;const x0=c0.getContext('2d',{willReadFrequently:true});x0.drawImage(img,0,0,sw,shh);
+    const d0=x0.getImageData(0,0,sw,shh).data;const lum=i=>(d0[i]*299+d0[i+1]*587+d0[i+2]*114)/1000;
+    const col=new Array(sw).fill(0),row=new Array(shh).fill(0);
+    for(let y=0;y<shh;y++)for(let x=0;x<sw;x++){if(lum((y*sw+x)*4)>150){col[x]++;row[y]++}}
+    const xs=col.map((v,i)=>v/shh>.45?i:-1).filter(i=>i>=0),ys=row.map((v,i)=>v/sw>.3?i:-1).filter(i=>i>=0);
+    let cx=0,cy=0,cw=W0,ch=H0;
+    if(xs.length>sw*.2&&ys.length>shh*.2){const m=8;cx=Math.max(0,(xs[0]-m)/k0);cy=Math.max(0,(ys[0]-m)/k0);cw=Math.min(W0,(xs[xs.length-1]+m)/k0)-cx;ch=Math.min(H0,(ys[ys.length-1]+m)/k0)-cy}
+    const k=Math.min(2.5,1800/cw),w=Math.round(cw*k),h=Math.round(ch*k);
+    const c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d',{willReadFrequently:true});
+    x.drawImage(img,cx,cy,cw,ch,0,0,w,h);
+    const id=x.getImageData(0,0,w,h),d=id.data,g=new Float32Array(w*h);
+    for(let i=0;i<w*h;i++)g[i]=(d[i*4]*299+d[i*4+1]*587+d[i*4+2]*114)/1000;
+    // limiar adaptativo (compara cada ponto com a média da vizinhança)
+    const I=new Float64Array((w+1)*(h+1));
+    for(let y=0;y<h;y++){let s=0;for(let xx=0;xx<w;xx++){s+=g[y*w+xx];I[(y+1)*(w+1)+xx+1]=I[y*(w+1)+xx+1]+s}}
+    const r=25;
+    for(let y=0;y<h;y++){const y1=Math.max(0,y-r),y2=Math.min(h,y+r+1);for(let xx=0;xx<w;xx++){const a=Math.max(0,xx-r),b=Math.min(w,xx+r+1);
+      const m=(I[y2*(w+1)+b]-I[y1*(w+1)+b]-I[y2*(w+1)+a]+I[y1*(w+1)+a])/((y2-y1)*(b-a));const v=g[y*w+xx]>m*.85?255:0;const j=(y*w+xx)*4;d[j]=d[j+1]=d[j+2]=v;d[j+3]=255}}
+    x.putImageData(id,0,0);
+    return c;
+  }finally{URL.revokeObjectURL(url)}
 }
-function limparNota(){nota.urls.forEach(u=>{try{URL.revokeObjectURL(u)}catch(e){}});nota.files=[];nota.urls=[];nota.msg=''}
+async function getOcr(){
+  if(ocrWorker)return ocrWorker;
+  if(!window.Tesseract)await loadScript('vendor/tesseract/tesseract.min.js');
+  ocrWorker=await Tesseract.createWorker('por',1,{workerPath:OCR_DIR+'worker.min.js',corePath:OCR_DIR,langPath:OCR_DIR.replace(/\/$/,''),workerBlobURL:false,
+    logger:m=>{if(!nota.busy)return;if(m.status==='recognizing text'){nota.etapa='Lendo o texto';nota.prog=m.progress}else{nota.etapa='Preparando a leitura (só demora na primeira vez)';nota.prog=0}const el=document.querySelector('.drop p.muted');if(el&&cur()==='ingredientes')el.textContent=`${nota.etapa}${nota.prog?` · ${Math.round(nota.prog*100)}%`:''}. Deixe o app aberto.`}});
+  await ocrWorker.setParameters({preserve_interword_spaces:'1',user_defined_dpi:'300'});
+  return ocrWorker;
+}
+async function lerFotos(list){
+  const fs=Array.from(list||[]).filter(f=>f&&f.type&&f.type.startsWith('image/')).slice(0,5);
+  if(!fs.length||nota.busy)return;
+  nota.busy=true;nota.cancel=false;nota.msg='';nota.prog=0;nota.etapa='Preparando';render();
+  let txt='';
+  try{
+    const w=await getOcr();
+    for(const f of fs){if(nota.cancel)break;const cv=await prepNota(f);const r=await w.recognize(cv);txt+=(txt?'\n':'')+(r&&r.data&&r.data.text||'')}
+  }catch(e){if(!nota.cancel)nota.msg='Não consegui ler a foto neste aparelho. Use "Colar texto da nota".';console.error(e)}
+  nota.busy=false;
+  if(nota.cancel){nota.msg='';render();return}
+  render();
+  if(txt.trim())abrirTextoNota(txt,true);
+  else if(!nota.msg){nota.msg='Não encontrei texto nessa foto. Tente com a nota inteira, reta e bem iluminada.';render()}
+}
+function abrirTextoNota(txt,daFoto){
+  const tenta=t=>{const res=lerTextoNota(t);return res.itens.length?res:null};
+  if(daFoto){const res=tenta(txt);if(res){openRevisao(res,txt);return}}
+  const sh=openSheet(daFoto?'Texto lido da foto':'Colar texto da nota',`<div class="stack">
+    <p style="margin:0">${daFoto?'Não consegui separar os itens. Corrija o texto abaixo, se precisar, ou tente outra foto.':'Cole aqui o texto da nota. No celular, abra a foto da nota e use <b>Copiar texto</b> (Google Lens no Android, ou segure o dedo no texto da foto no iPhone).'}</p>
+    <textarea id="ntTxt" rows="12" style="font-family:ui-monospace,monospace;font-size:.85rem" placeholder="1851 CAIXA P/BOLO 1,00 5,90 5,90">${esc(txt||'')}</textarea>
+    <button class="btn" type="button" id="ntCol">Colar</button>
+    <button class="btn primary" type="button" id="ntOk">Separar itens</button>
+  </div>`);
+  const ta=sh.querySelector('#ntTxt');
+  const col=sh.querySelector('#ntCol');
+  if(!(navigator.clipboard&&navigator.clipboard.readText))col.hidden=true;
+  col.addEventListener('click',async()=>{try{const t=await navigator.clipboard.readText();if(t){ta.value=t;ta.focus()}else toast('Não há texto copiado.')}catch(e){toast('Segure o dedo na caixa e escolha Colar.')}});
+  sh.querySelector('#ntOk').addEventListener('click',()=>{const res=tenta(ta.value);if(!res){toast('Não encontrei itens com preço nesse texto.');return}closeSheet();openRevisao(res,ta.value)});
+}
 async function prepImg(file,max=2400,q=.88){
   try{
     const url=URL.createObjectURL(file);
@@ -1299,46 +1338,130 @@ async function prepImg(file,max=2400,q=.88){
     return await new Promise(res=>c.toBlob(b=>res(b||file),'image/jpeg',q));
   }catch(e){return file}
 }
-function promptNota(){
-  const lista=Object.entries(S.ing).map(([id,g])=>`${id} | ${g.nome} | ${num(g.qtd)} ${g.unidade||'g'}`).join('\n')||'(nenhum)';
-  return `Você está lendo foto(s) de uma nota fiscal ou cupom de compra de uma confeitaria no Brasil. Se houver mais de uma foto, são partes da mesma nota: não repita itens.
-
-Liste todos os itens comprados. Para cada item informe:
-- descricao: o texto do item como aparece na nota
-- nome: nome simples do produto em português, sem marca (ex.: "Leite condensado", "Farinha de trigo", "Creme de leite")
-- pacotes: quantas embalagens iguais foram compradas (número; use 1 se for vendido por peso ou se não der para saber)
-- tamanho: o tamanho de UMA embalagem, em g, ml ou unidades (ex.: 395 para leite condensado 395g; 1000 para 1kg; 30 para bandeja com 30 ovos; 12 para dúzia). Se for vendido a granel por peso, coloque o peso total comprado em g. Use o tamanho escrito na descrição; se não estiver escrito, use o tamanho mais comum desse produto no Brasil.
-- unidade: "g", "ml" ou "un"
-- precoTotal: o valor total pago nesse item em reais (número com ponto decimal), já com desconto do item se houver
-- confeitaria: true se é ingrediente, embalagem ou material usado para fazer bolos e doces; false para outras coisas (limpeza, higiene, bebidas para beber, etc.)
-- ingredienteId: o id do ingrediente cadastrado abaixo que é o MESMO produto (ignore a marca), ou null se nenhum for
-
-Ingredientes já cadastrados (id | nome | embalagem):
-${lista}
-
-Responda somente com JSON neste formato:
-{"loja":"nome da loja ou null","data":"AAAA-MM-DD ou null","total":número ou null,"itens":[{"descricao":"LEITE COND MOCA 395G","nome":"Leite condensado","pacotes":2,"tamanho":395,"unidade":"g","precoTotal":15.98,"confeitaria":true,"ingredienteId":"leite-condensado"}]}
-Se a imagem não for uma nota de compra ou estiver ilegível, responda {"erro":"explicação curta em português"}.`;
+/* separar os itens do texto: código, descrição, quantidade, valor e total */
+const RX_DEC=/(?<![\d.,])\d{1,5}[.,]\d{2,3}(?!\d)/g;
+const RX_FIM=/(qt?d?e?\.?\s*total\s*de\s*i|valor\s*total|valor\s*[aà]\s*pagar|sub-?total|total\s*r\$|forma\s*de\s*pag|formade)/i;
+const RX_EMB=/(caixa|\bcx\b|cake|board|\bbase\b|fita|saco|sacola|saquinho|embalagem|tampa|prato|suporte|forminha|forma\s*de\s*papel|papel\s*manteiga|pote|laco|etiqueta|bandeja|vela|topo|isopor|cartao|tag|celofane|cone)\b/i;
+const RX_CAB=/^(QTD|QTDE|UN|UND|VL|VL\.|UNIT|UNIT\.|TOTAL|R\$|COD|CODIGO|DESCRICAO|ITEM|VALOR)$/;
+const decNum=s=>{const m=String(s).match(/^(\d{1,5})[.,](\d{2,3})$/);return m?Number(m[1]+'.'+m[2]):num(s)};
+const r2=n=>Math.round(n*100)/100;
+function tamanhoDe(desc){
+  const d=semAcento(desc).toUpperCase().replace(/(\d),(\d)/g,'$1.$2');
+  let m=d.match(/(\d+(?:\.\d+)?)\s*(KG|KILO|KILOS|QUILO)\b/);if(m)return{qtd:Math.round(+m[1]*1000),unidade:'g'};
+  m=d.match(/(\d+(?:\.\d+)?)\s*(G|GR|GRS|GRAMAS)\b/);if(m)return{qtd:+m[1],unidade:'g'};
+  m=d.match(/(\d+(?:\.\d+)?)\s*(L|LT|LTS|LITRO|LITROS)\b/);if(m)return{qtd:Math.round(+m[1]*1000),unidade:'ml'};
+  m=d.match(/(\d+(?:\.\d+)?)\s*(ML)\b/);if(m)return{qtd:+m[1],unidade:'ml'};
+  m=d.match(/\b(?:C\/|COM\s*|PCT\s*|PACOTE\s*)(\d+)\s*(UN|UNID|UNIDADES|PCS|PC)?\b/)||d.match(/\b(\d+)\s*(UN|UNID|UNIDADES|PCS)\b/);
+  if(m&&+m[1]>1&&+m[1]<1000)return{qtd:+m[1],unidade:'un'};
+  if(/\bDUZIA\b/.test(d))return{qtd:12,unidade:'un'};
+  return null;
 }
-function msgErroSample(c){
-  return({not_granted:'Para ler a nota, toque em Permitir quando o Claude pedir autorização.',rate_limited:'Muitas leituras seguidas. Espere um minuto e tente de novo.',image_rejected:'Essa imagem não foi aceita. Tente outra foto.',images_unavailable:'A leitura de imagens não está disponível agora.',invalid_json:'Não consegui entender a nota. Tente uma foto mais nítida.',empty_completion:'Não consegui entender a nota. Tente uma foto mais nítida.',prompt_too_large:'Fotos demais de uma vez. Tente com menos fotos.',session_expired:'Sua sessão expirou. Abra o app de novo.',sem_acesso:'Seu usuário não tem acesso à leitura de notas. Saia e entre de novo.',nao_instalada:'A leitura de notas ainda não foi ligada: falta publicar a função “bia-ler-nota” no Supabase.',sem_chave:'Falta a chave da IA no Supabase (ANTHROPIC_API_KEY).',chave_invalida:'A chave da IA no Supabase não está funcionando. Confira a chave.',sem_conexao:'Sem internet. Confira a conexão e tente de novo.'})[c]||'Não deu para ler agora. Tente de novo em instantes.';
+function nomeBonito(desc){
+  let s=String(desc||'').toLowerCase().replace(/\s+/g,' ').trim();
+  s=s.replace(/\bp\/\s*/g,'p/ ').replace(/\bc\/\s*/g,'c/ ').replace(/\bmdf\b/g,'MDF').replace(/(\d)\s*(lt|l)\b/g,'$1 L').replace(/(\d)\s*(kg|g|ml|cm)\b/g,'$1 $2');
+  return s.charAt(0).toUpperCase()+s.slice(1);
 }
-async function lerNota(){
-  if(!SAMPLE||!nota.files.length||nota.busy)return;
-  nota.busy=true;nota.msg='';nota.ctl=new AbortController();render();
-  try{
-    const blobs=await Promise.all(nota.files.map(prepImg));
-    const res=await SAMPLE.json(promptNota(),{images:blobs,signal:nota.ctl.signal});
-    if(!res||typeof res!=='object'||res.erro||!Array.isArray(res.itens)||!res.itens.length){
-      nota.msg=res&&res.erro?('Não consegui ler: '+res.erro):'Não encontrei itens nessa foto. Tente com a nota inteira, reta e bem iluminada.';
-    }else{limparNota();nota.busy=false;render();openRevisao(res);return}
-  }catch(e){if(!(e&&e.code==='cancelled'))nota.msg=msgErroSample(e&&e.code)}
-  nota.busy=false;render();
+// opções de {quantidade, total} para os números lidos num item; a primeira é a mais provável
+function opcoesValor(ns){
+  ns=ns.filter(n=>n>0);
+  if(!ns.length)return[];
+  const t=ns[ns.length-1];
+  if(ns.length===1)return[{q:1,t,ok:false}];
+  if(ns.length===2){const[a,b]=ns;if(Math.abs(a-b)<0.01)return[{q:1,t:b,ok:true}];
+    const q=Math.round(b/a);if(q>=2&&q<=99&&Math.abs(q*a-b)<0.02)return[{q,t:b,ok:true}];
+    if(Math.abs(a-Math.round(a))<0.001&&a>=1&&a<=99)return[{q:a,t:b,ok:false}];
+    return[{q:1,t:b,ok:false},{q:1,t:a,ok:false}]}
+  const q=ns[0],v=ns[ns.length-2];
+  if(Math.abs(q*v-t)<0.03)return[{q,t,ok:true}];
+  const qi=Math.abs(q-Math.round(q))<0.001&&q>=1&&q<=99?Math.round(q):null;
+  if(qi)return[{q:qi,t,ok:false},{q:qi,t:r2(qi*v),ok:false}];
+  return[{q:q>0&&q<50?q:1,t,ok:false},{q:q>0&&q<50?q:1,t:r2(q*v),ok:false}];
+}
+function lerTextoNota(txt){
+  const linhas=String(txt||'').replace(/\r/g,'').split('\n').map(l=>l.replace(/[|“”"‘’´`*»«;!\]\[]/g,' ').replace(/\s+$/,'')).filter(l=>l.trim());
+  const res={loja:'',data:'',total:0,cnpj:'',itens:[]};
+  const datas=[];linhas.forEach(l=>{const m=l.match(/\b(\d{2})[\/.:-]?(\d{2})[\/.:-](20\d{2})\b/);if(m&&+m[1]>=1&&+m[1]<=31&&+m[2]>=1&&+m[2]<=12)datas.push({d:`${m[3]}-${m[2]}-${m[1]}`,venda:/venda|emiss|data/i.test(l)})});
+  const dv=datas.find(x=>x.venda)||datas[datas.length-1];if(dv)res.data=dv.d;
+  const ic=linhas.findIndex(l=>/c\s*n\s*p\s*j|onpj|cnp\)/i.test(l));
+  const mc=ic>=0&&linhas[ic].replace(/\s/g,'').match(/(\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2})/);if(mc)res.cnpj=mc[1].replace(/\D/g,'');
+  const cab=linhas.findIndex(l=>/descri|produto/i.test(l));
+  const ate=ic>=0?ic:(cab>=0?cab:Math.min(4,linhas.length));
+  const nomes=linhas.slice(0,ate).map(l=>l.trim()).filter(l=>!/^\(.*\)$/.test(l)&&!/\b(rua|av|avenida|cep|tel|fone)\b/i.test(l)&&/[A-Za-zÀ-ú]{3}/.test(l)&&l.replace(/[^A-Za-zÀ-ú]/g,'').length>=l.replace(/\s/g,'').length*.7);
+  res.loja=nomes.slice(-2).join(' ').split(/\s+/).filter(w=>/^[A-ZÀ-Ý&.\/-]{2,}$|^[EÉ]$/.test(w)).join(' ').slice(0,80);
+  const RX_TOT=/(?<![\d.,])\d{1,5}[.,]\d{2}/g;
+  // total: junta os valores de "valor total", "a pagar" e do pagamento; fica com o que mais se repete
+  const tots=[];for(const l of linhas){const ns=l.match(RX_TOT);if(!ns)continue;
+    if(/[aà]\s*pagar|valor\s*total|^\s*total\b|dinheiro|cart[aã]o|cr[eé]dito|d[eé]bito|\bpix\b/i.test(l))tots.push(decNum(ns[ns.length-1]))}
+  const freq={};tots.forEach(t=>{freq[t]=(freq[t]||0)+1});
+  const totOrd=Object.keys(freq).map(Number).sort((a,b)=>freq[b]-freq[a]||tots.indexOf(a)-tots.indexOf(b));
+  res.total=totOrd[0]||0;
+  let ini=cab>=0?cab+1:0,fim=linhas.length;
+  for(let i=ini;i<linhas.length;i++)if(RX_FIM.test(linhas[i])){fim=i;break}
+  const area=linhas.slice(ini,fim);
+  // nota em letras maiúsculas: palavras com minúsculas são sujeira da foto
+  const letras=area.join('').replace(/[^A-Za-zÀ-ú]/g,'');const maius=letras.replace(/[^A-ZÀ-Ý]/g,'').length;
+  const soMaius=letras.length>20&&maius/letras.length>.75;
+  const itens=[],soltos=[];let at=null;
+  const RX_COD=/(?:^|\s)(\d{3,7})\s+([A-Za-zÀ-ú].*)$/;
+  for(const l of area){
+    const m=l.match(RX_COD);let texto,novo=false;
+    if(m){at={cod:m[1],desc:[],ns:(m[2].match(RX_DEC)||[]).map(decNum)};itens.push(at);texto=m[2].split(/\s{2,}(?=\S*\d)|(?<![\d.,])\d{1,5}[.,]\d{2}/)[0];novo=true}
+    else texto=l;
+    let palavras=texto.replace(RX_DEC,' ').split(/\s+/).filter(Boolean);
+    if(soMaius)palavras=palavras.filter(w=>!/[a-zà-ÿ]/.test(w));
+    palavras=palavras.filter(w=>/[A-Za-zÀ-ú0-9]/.test(w)&&!RX_CAB.test(semAcento(w).toUpperCase()));
+    const d=palavras.join(' ').replace(/^[^A-Za-zÀ-ú0-9]+|[^A-Za-zÀ-ú0-9)%]+$/g,'').trim();
+    const temTexto=/[A-Za-zÀ-ú]{2}/.test(d);
+    if(!novo){
+      const ns=(texto.match(RX_DEC)||[]).map(decNum);
+      if(!temTexto){soltos.push(...ns);continue}
+      if(!at){at={cod:'',desc:[],ns:[]};itens.push(at)}
+      if(ns.length&&!at.ns.length)at.ns=ns;
+    }
+    if(temTexto)at.desc.push(d);
+  }
+  const lista=itens.filter(x=>x.desc.length);
+  // texto copiado por coluna (ex.: Google Lens): os números vêm separados, depois das descrições
+  const semNum=lista.filter(x=>!x.ns.length).length;
+  if(lista.length&&semNum>lista.length/2&&soltos.length>=lista.length){
+    const N=lista.length,T=soltos;
+    const tentar=fn=>{let ok=0;const r=lista.map((_,i)=>{const v=opcoesValor(fn(i));if(v[0]&&v[0].ok)ok++;return v});return{ok,r}};
+    const cands=[];
+    if(T.length>=3*N){cands.push(tentar(i=>[T[3*i],T[3*i+1],T[3*i+2]]));cands.push(tentar(i=>[T[i],T[N+i],T[2*N+i]]))}
+    if(T.length>=2*N){cands.push(tentar(i=>[T[i],T[N+i]]));cands.push(tentar(i=>[T[2*i],T[2*i+1]]))}
+    cands.push(tentar(i=>[T[T.length-N+i]]));
+    const best=cands.sort((a,b)=>b.ok-a.ok)[0];
+    lista.forEach((x,i)=>{x.ops=best.r[i]});
+  }
+  lista.forEach(x=>{if(!x.ops)x.ops=opcoesValor(x.ns)});
+  // quando a leitura errou um número, escolhe a opção que fecha com o total da nota
+  if(totOrd.length>1){const somaOp=x=>x.ops[0]?x.ops[0].t:0;const sm=r2(lista.reduce((s,x)=>s+somaOp(x),0));const t=totOrd.find(t=>Math.abs(t-sm)<=0.01);if(t)res.total=t}
+  if(res.total){
+    const duv=lista.filter(x=>x.ops.length>1).slice(0,8);
+    const soma=()=>r2(lista.reduce((s,x)=>s+(x.ops[x.esc||0]?x.ops[x.esc||0].t:0),0));
+    if(duv.length&&Math.abs(soma()-res.total)>0.01){
+      for(let mask=1;mask<(1<<duv.length);mask++){duv.forEach((x,j)=>{x.esc=(mask>>j)&1});if(Math.abs(soma()-res.total)<=0.01){duv.forEach(x=>{if(x.esc)x.ops[1].ok=true});break}}
+      if(Math.abs(soma()-res.total)>0.01)duv.forEach(x=>{x.esc=0});
+    }
+  }
+  for(const x of lista){
+    const v=x.ops[x.esc||0];
+    const desc=x.desc.join(' ').replace(/\s+/g,' ').trim().slice(0,120);
+    const emb=RX_EMB.test(semAcento(desc));
+    const tm=tamanhoDe(desc);
+    const tam=emb?(tm&&tm.unidade==='un'?tm:{qtd:1,unidade:'un'}):tm;
+    const q=v?v.q:1,inteiro=Math.abs(q-Math.round(q))<0.001;
+    const pac=inteiro&&q>=1?Math.round(q):1,granel=!emb&&!inteiro&&q>0&&q<100;
+    res.itens.push({cod:x.cod,descricao:desc,nome:nomeBonito(desc),pacotes:pac,
+      tamanho:granel?Math.round(q*1000):(tam?tam.qtd:''),unidade:granel?'g':(tam?tam.unidade:'g'),
+      precoTotal:v?v.t:0,cat:emb?'embalagem':'ingrediente',conferir:!v||!v.ok,lidos:x.ns.length?x.ns:null});
+  }
+  return res;
 }
 function comparar(r){
   const g=S.ing[r.ingId];
   if(!r.preco||!r.qtd)return{k:'up',t:'Falta o preço ou o tamanho da embalagem'};
-  if(!g)return{k:'muted',t:`Novo ingrediente: ${brl(perVal(r.preco,r.qtd,r.unidade))} por ${perLabel(r.unidade)}`,novo:true};
+  if(!g)return{k:'muted',t:`${r.cat==='embalagem'?'Nova embalagem':'Novo ingrediente'}: ${brl(perVal(r.preco,r.qtd,r.unidade))} por ${perLabel(r.unidade)}`,novo:true};
   if(g.exemplo)return{k:'muted',t:'Primeiro preço real (o anterior era só exemplo)'};
   if((g.unidade||'g')!==r.unidade||!num(g.qtd)||!num(g.preco))return{k:'up',t:'A unidade é diferente da cadastrada: confira a embalagem'};
   const o=num(g.preco)/num(g.qtd),n=r.preco/r.qtd,pct=(n/o-1)*100;
@@ -1347,59 +1470,85 @@ function comparar(r){
   if(Math.abs(pct)<1)return{k:'muted',t:'Mesmo preço da última compra',pct:0};
   return pct>0?{k:'up',t:`▲ Subiu ${fmt(pct,0)}%: ${de}`,pct}:{k:'down',t:`▼ Baixou ${fmt(-pct,0)}%: ${de}`,pct};
 }
-function openRevisao(res){
-  const meta={loja:String(res.loja||'').slice(0,80),data:/^\d{4}-\d{2}-\d{2}$/.test(String(res.data||''))?res.data:isoD(new Date()),total:num(res.total)};
-  if(dayDiff(meta.data)>1)meta.data=isoD(new Date());
+const isEmb=g=>!!g&&g.cat==='embalagem';
+const chaveCod=(meta,cod)=>cod?`${meta.cnpj||semAcento(meta.loja||'').toUpperCase().replace(/[^A-Z]/g,'').slice(0,12)}:${cod}`:'';
+const normDesc=t=>semAcento(String(t||'')).toUpperCase().replace(/[^A-Z0-9]+/g,' ').trim();
+// acha o item já cadastrado: pelo código da loja (com a mesma primeira palavra), pela descrição da nota ou pelo nome
+function acharCadastro(it,meta){
+  const ents=Object.entries(S.ing),d=normDesc(it.descricao),w=d.split(' ')[0];
+  if(it.cod){const lojaK=chaveCod(meta,it.cod);
+    const e=ents.find(([,g])=>(g.cods||[]).some(c=>c===lojaK||(c.split(':')[1]===it.cod&&normDesc(g.descNota||g.nome).split(' ')[0]===w)));if(e)return e[0]}
+  let e=ents.find(([,g])=>g.descNota&&normDesc(g.descNota)===d);if(e)return e[0];
+  e=ents.find(([,g])=>normDesc(g.nome)===normDesc(it.nome));return e?e[0]:'';
+}
+function openRevisao(res,txt){
+  const meta={loja:String(res.loja||'').slice(0,80),cnpj:res.cnpj||'',data:/^\d{4}-\d{2}-\d{2}$/.test(String(res.data||''))?res.data:isoD(new Date()),total:num(res.total)};
+  if(dayDiff(meta.data)>1||dayDiff(meta.data)<-120)meta.data=isoD(new Date());
   const rev=res.itens.map(it=>{
     const pac=Math.max(1,Math.round(num(it.pacotes))||1);
-    const conf=it.confeitaria!==false;
-    return{on:conf,conf,desc:String(it.descricao||'').slice(0,120),nome:String(it.nome||it.descricao||'').slice(0,80),ingId:(it.ingredienteId&&S.ing[it.ingredienteId])?it.ingredienteId:'',preco:Math.round(num(it.precoTotal)/pac*100)/100,qtd:num(it.tamanho),unidade:['g','ml','un'].includes(it.unidade)?it.unidade:'g',pacotes:pac};
+    const ingId=acharCadastro(it,meta),g=S.ing[ingId];
+    const cat=g?(g.cat||'ingrediente'):(it.cat||'ingrediente');
+    let qtd=num(it.tamanho),unidade=['g','ml','un'].includes(it.unidade)?it.unidade:'g';
+    if(g&&!qtd){qtd=num(g.qtd);unidade=g.unidade||unidade}
+    if(cat==='embalagem'&&!qtd){qtd=1;unidade='un'}
+    return{on:true,cat,cod:it.cod||'',desc:String(it.descricao||'').slice(0,120),nome:String(it.nome||it.descricao||'').slice(0,80),ingId,preco:Math.round(num(it.precoTotal)/pac*100)/100,qtd,unidade,pacotes:pac,conferir:!!it.conferir,lidos:it.lidos};
   }).filter(r=>r.desc||r.nome);
-  rev.sort((a,b)=>(b.conf?1:0)-(a.conf?1:0));
+  const soma=Math.round(rev.reduce((s,r)=>s+r.preco*r.pacotes,0)*100)/100;
   const ings=Object.entries(S.ing).sort((a,b)=>(a[1].nome||'').localeCompare(b[1].nome||''));
-  const opts=sel=>`<option value="">Novo ingrediente</option>`+ings.map(([iid,g])=>`<option value="${esc(iid)}" ${iid===sel?'selected':''}>${esc(g.nome)}</option>`).join('');
+  const grupo=(cat,sel)=>ings.filter(([,g])=>(g.cat||'ingrediente')===cat).map(([iid,g])=>`<option value="${esc(iid)}" ${iid===sel?'selected':''}>${esc(g.nome)}</option>`).join('');
+  const opts=r=>`<option value="novo:ingrediente" ${!r.ingId&&r.cat!=='embalagem'?'selected':''}>Novo ingrediente</option><option value="novo:embalagem" ${!r.ingId&&r.cat==='embalagem'?'selected':''}>Nova embalagem</option>`
+    +`<optgroup label="Ingredientes">${grupo('ingrediente',r.ingId)}</optgroup><optgroup label="Embalagens">${grupo('embalagem',r.ingId)}</optgroup>`;
   const sh=openSheet('Conferir nota',`<div class="stack">
     <p class="muted" style="margin:0">${esc(meta.loja||'Compra')} · ${fmtData(meta.data)}${meta.total?' · total '+brl(meta.total):''}</p>
+    ${meta.total&&Math.abs(soma-meta.total)>0.01?`<div class="note warn">A soma dos itens (${brl(soma)}) não bate com o total da nota (${brl(meta.total)}). Confira os valores marcados.</div>`:''}
     <p style="margin:0">Confira o que li. Desmarque o que não quer salvar e corrija se algo estiver diferente da nota.</p>
     <div class="stack" id="revList"></div>
     <button class="btn primary" type="button" id="revSave"></button>
+    ${txt?'<button class="btn ghost" type="button" id="revTxt">Ver o texto lido</button>':''}
   </div>`);
   const box=sh.querySelector('#revList'),btn=sh.querySelector('#revSave');
   const cmpHtml=r=>{const c=comparar(r);return`<span class="${c.k==='muted'?'muted':c.k}">${esc(c.t)}</span>`};
-  const rowHtml=(r,i)=>`<div class="revrow ${r.on?'':'off'}" data-i="${i}">
-    <label class="row" style="gap:10px;align-items:flex-start"><input type="checkbox" data-k="on" ${r.on?'checked':''}><span style="min-width:0"><b>${esc(r.ingId?S.ing[r.ingId].nome:r.nome)}</b><br><small class="muted">${esc(r.desc)}${r.pacotes>1?` · ${r.pacotes} embalagens`:''}${r.conf?'':' · não parece ingrediente'}</small></span></label>
+  const rowHtml=(r,i)=>{const emb=r.cat==='embalagem';return`<div class="revrow ${r.on?'':'off'}" data-i="${i}">
+    <label class="row" style="gap:10px;align-items:flex-start"><input type="checkbox" data-k="on" ${r.on?'checked':''}><span style="min-width:0"><b>${esc(r.ingId?S.ing[r.ingId].nome:r.nome)}</b>${emb?'<span class="tag">embalagem</span>':''}<br><small class="muted">${r.cod?esc(r.cod)+' · ':''}${esc(r.desc)}${r.pacotes>1?` · ${r.pacotes} unidades compradas`:''}</small></span></label>
+    ${r.conferir?`<div class="note warn" style="margin:0">Confira o preço na nota${r.lidos&&r.lidos.length?`: li ${r.lidos.map(n=>fmt(n)).join(' · ')}`:''}.</div>`:''}
     <div class="cmp" data-cmp>${cmpHtml(r)}</div>
-    <div class="field"><label>Salvar como</label><select data-k="ingId" aria-label="Salvar como">${opts(r.ingId)}</select></div>
-    ${r.ingId?'':`<div class="field"><label>Nome do ingrediente</label><input data-k="nome" aria-label="Nome do ingrediente" value="${esc(r.nome)}"></div>`}
-    <div class="grid3"><div class="field"><label>Preço emb.</label><input data-k="preco" aria-label="Preço de uma embalagem" inputmode="decimal" value="${inVal(r.preco)}"></div><div class="field"><label>Embalagem</label><input data-k="qtd" aria-label="Tamanho da embalagem" inputmode="decimal" value="${inVal(r.qtd)}"></div><div class="field"><label>Unidade</label><select data-k="unidade" aria-label="Unidade">${Object.keys(UN).map(u=>`<option value="${u}" ${r.unidade===u?'selected':''}>${u}</option>`).join('')}</select></div></div>
-  </div>`;
-  const label=()=>{const n=rev.filter(r=>r.on).length;btn.textContent=n?`Salvar ${n} ingrediente${n>1?'s':''}`:'Nada marcado';btn.disabled=!n};
+    <div class="field"><label>Salvar como</label><select data-k="ingId" aria-label="Salvar como">${opts(r)}</select></div>
+    ${r.ingId?'':`<div class="field"><label>Nome ${emb?'da embalagem':'do ingrediente'}</label><input data-k="nome" aria-label="Nome" value="${esc(r.nome)}"></div>`}
+    <div class="grid3"><div class="field"><label>Preço ${emb?'pago':'emb.'}</label><input data-k="preco" aria-label="Preço de uma embalagem" inputmode="decimal" value="${inVal(r.preco)}"></div><div class="field"><label>${emb?'Vem quantas':'Embalagem'}</label><input data-k="qtd" aria-label="Tamanho da embalagem" inputmode="decimal" value="${inVal(r.qtd)}"></div><div class="field"><label>Unidade</label><select data-k="unidade" aria-label="Unidade">${Object.keys(UN).map(u=>`<option value="${u}" ${r.unidade===u?'selected':''}>${u}</option>`).join('')}</select></div></div>
+  </div>`};
+  const label=()=>{const n=rev.filter(r=>r.on).length;btn.textContent=n?`Salvar ${n} ${n>1?'itens':'item'}`:'Nada marcado';btn.disabled=!n};
   const draw=()=>{box.innerHTML=rev.map(rowHtml).join('');label()};
   const redrawRow=i=>{const el=box.querySelector(`[data-i="${i}"]`);if(el)el.outerHTML=rowHtml(rev[i],i);label()};
   draw();
   box.addEventListener('change',e=>{const row=e.target.closest('.revrow');if(!row)return;const i=+row.dataset.i,k=e.target.dataset.k,r=rev[i];
     if(k==='on'){r.on=e.target.checked;redrawRow(i)}
-    else if(k==='ingId'){r.ingId=e.target.value;if(r.ingId&&S.ing[r.ingId]&&S.ing[r.ingId].unidade)r.unidade=r.unidade||S.ing[r.ingId].unidade;redrawRow(i)}
+    else if(k==='ingId'){const v=e.target.value;if(v.startsWith('novo:')){r.ingId='';r.cat=v.slice(5)}else{r.ingId=v;const g=S.ing[v];if(g){r.cat=g.cat||'ingrediente';if(g.unidade&&(!r.qtd||r.cat==='embalagem'))r.unidade=g.unidade}}
+      if(r.cat==='embalagem'&&r.unidade!=='un'){r.unidade='un';r.qtd=1}redrawRow(i)}
     else if(k==='unidade'){r.unidade=e.target.value;row.querySelector('[data-cmp]').innerHTML=cmpHtml(r)}});
   box.addEventListener('input',e=>{const row=e.target.closest('.revrow');if(!row)return;const r=rev[+row.dataset.i],k=e.target.dataset.k;
     if(k==='preco'||k==='qtd'){r[k]=num(e.target.value);row.querySelector('[data-cmp]').innerHTML=cmpHtml(r)}
     else if(k==='nome'){r.nome=e.target.value}});
   btn.addEventListener('click',()=>salvarRevisao(rev,meta,btn));
+  const vt=sh.querySelector('#revTxt');if(vt)vt.addEventListener('click',()=>{closeSheet();abrirTextoNota(txt,false)});
 }
 async function salvarRevisao(rev,meta,btn){
   const sel=rev.filter(r=>r.on);
   const bad=sel.filter(r=>!(r.preco>0&&r.qtd>0));
-  if(bad.length){toast('Preencha o preço e a embalagem dos itens marcados.');return}
+  if(bad.length){toast('Preencha o preço e a quantidade dos itens marcados.');return}
   btn.disabled=true;btn.textContent='Salvando…';
   const antes={...S.ing};const out=[];
   for(const r of sel){
     const c=comparar(r);
     const entry={data:meta.data,preco:r.preco,qtd:r.qtd,unidade:r.unidade,loja:meta.loja||null};
+    const ck=chaveCod(meta,r.cod);
     const g=r.ingId&&S.ing[r.ingId];
-    if(g){const hist=histBase(g);hist.push(entry);await save('ing',r.ingId,{nome:g.nome,preco:r.preco,qtd:r.qtd,unidade:r.unidade,historico:hist.slice(-12),atualizado:meta.data});out.push({nome:g.nome,c})}
-    else{const nome=(r.nome||r.desc).trim()||'Ingrediente';await save('ing',null,{nome,preco:r.preco,qtd:r.qtd,unidade:r.unidade,historico:[entry],atualizado:meta.data});out.push({nome,c:{k:'muted',t:'Novo ingrediente',novo:true}})}
+    if(g){const hist=histBase(g);hist.push(entry);const cods=[...new Set([...(g.cods||[]),...(ck?[ck]:[])])].slice(-10);
+      await save('ing',r.ingId,{...g,preco:r.preco,qtd:r.qtd,unidade:r.unidade,historico:hist.slice(-12),atualizado:meta.data,cods,descNota:r.desc||g.descNota||null,exemplo:false});out.push({nome:g.nome,c})}
+    else{const nome=(r.nome||r.desc).trim()||(r.cat==='embalagem'?'Embalagem':'Ingrediente');
+      await save('ing',null,{nome,preco:r.preco,qtd:r.qtd,unidade:r.unidade,historico:[entry],atualizado:meta.data,cat:r.cat==='embalagem'?'embalagem':'ingrediente',cods:ck?[ck]:[],descNota:r.desc||null});
+      out.push({nome,c:{k:'muted',t:r.cat==='embalagem'?'Nova embalagem':'Novo ingrediente',novo:true}})}
   }
-  if(S.db){try{await S.db.collection('compras').add({data:meta.data,loja:meta.loja||null,total:meta.total||null,itens:sel.map(r=>({nome:(r.ingId&&antes[r.ingId]?antes[r.ingId].nome:r.nome),preco:r.preco,qtd:r.qtd,unidade:r.unidade,pacotes:r.pacotes})),criado:new Date().toISOString()})}catch(e){}}
+  if(S.db){try{await S.db.collection('compras').add({data:meta.data,loja:meta.loja||null,total:meta.total||null,itens:sel.map(r=>({nome:(r.ingId&&antes[r.ingId]?antes[r.ingId].nome:r.nome),cod:r.cod||null,cat:r.cat,preco:r.preco,qtd:r.qtd,unidade:r.unidade,pacotes:r.pacotes})),criado:new Date().toISOString()})}catch(e){}}
   closeSheet();openResultado(out,antes);
 }
 function openResultado(out,antes){
@@ -1407,7 +1556,7 @@ function openResultado(out,antes){
   const recs=Object.values(S.comp).filter(c=>c.tipo!=='topper'&&c.modo!=='manual').map(c=>({r:c,a:custoKgComp(c,antes),b:custoKgComp(c)})).filter(x=>Math.abs(x.b-x.a)>=0.1).sort((x,y)=>(y.b-y.a)-(x.b-x.a));
   const lista=(arr,cls)=>`<div class="list">${arr.map(x=>`<div class="item static"><div class="main"><div class="t">${esc(x.nome)}</div><div class="s wl ${cls}">${esc(x.c.t)}</div></div></div>`).join('')}</div>`;
   openSheet('Nota salva',`<div class="stack">
-    <div class="stats"><div class="stat"><b class="num up">${up.length}</b><span>ficaram mais caros</span></div><div class="stat"><b class="num down">${down.length}</b><span>ficaram mais baratos</span></div><div class="stat"><b class="num">${novos.length}</b><span>ingredientes novos</span></div></div>
+    <div class="stats"><div class="stat"><b class="num up">${up.length}</b><span>ficaram mais caros</span></div><div class="stat"><b class="num down">${down.length}</b><span>ficaram mais baratos</span></div><div class="stat"><b class="num">${novos.length}</b><span>itens novos</span></div></div>
     ${up.length?`<h2>Ficaram mais caros</h2>${lista(up,'up')}`:''}
     ${down.length?`<h2>Ficaram mais baratos</h2>${lista(down,'down')}`:''}
     ${recs.length?`<h2>Custo das partes do bolo mudou</h2><p class="muted" style="margin:0">Custo por kg de bolo com os preços novos. Os pedidos novos e os preços calculados do cardápio já usam esses valores.</p><div class="list">${recs.map(x=>`<div class="item static"><div class="main"><div class="t">${esc(x.r.nome)}</div><div class="s num">${brl(x.a)} → <b class="${x.b>x.a?'up':'down'}">${brl(x.b)}</b> por kg de bolo</div></div></div>`).join('')}</div>`:''}
@@ -1438,7 +1587,7 @@ function vCardapio(){
   const ed=k=>`<button class="btn ghost" data-goto="${k}" style="min-height:32px">Editar</button>`;
   const tams=compsDe('tamanho'),rec=compsDe('recheio');
   return head
-  +sec('Tamanhos',tams.length?`<div class="list">${tams.map(t=>`<button class="item" data-tam="${esc(t.id)}"><div class="main"><div class="t">${esc(t.nome)}</div><div class="s">${[t.fatias?`Rende ${fmt(t.fatias)} fatias`:'',num(t.pesoKg)?`≈ ${fmt(t.pesoKg,1)} kg`:''].filter(Boolean).join(' · ')||'&nbsp;'}</div></div><div class="end"><span class="price-big">${precoTam(t)}</span></div></button>`).join('')}</div>`:'<div class="empty"><strong>Nenhum tamanho</strong>Cadastre os tamanhos com o preço de cada um.</div>',`<button class="btn ghost" data-act="novoTam" style="min-height:32px">+ Tamanho</button>`)
+  +sec('Tamanhos',tams.length?`<div class="list">${tams.map(t=>`<button class="item" data-tam="${esc(t.id)}"><div class="main"><div class="t">${esc(t.nome)}</div><div class="s">${[t.fatias?`Rende ${fmt(t.fatias)} fatias`:'',num(t.pesoKg)?`≈ ${fmt(t.pesoKg,1)} kg`:'',temEmbTam(t)?`embalagem ${brl(custoEmbTam(t))}`:''].filter(Boolean).join(' · ')||'&nbsp;'}</div></div><div class="end"><span class="price-big">${precoTam(t)}</span></div></button>`).join('')}</div>`:'<div class="empty"><strong>Nenhum tamanho</strong>Cadastre os tamanhos com o preço de cada um.</div>',`<button class="btn ghost" data-act="novoTam" style="min-height:32px">+ Tamanho</button>`)
   +sec('Massa',chips(compsDe('massa').map(c=>c.nome)),ed('massa'))
   +sec('Recheios tradicionais',chips(rec.filter(c=>!c.especial).map(c=>c.nome)),ed('recheio'))
   +sec('Recheios especiais',chips(rec.filter(c=>c.especial).map(c=>c.nome))+'<small class="muted">Valor extra de acordo com o tamanho e a camada de recheio.</small>',ed('recheio'))
@@ -1449,7 +1598,9 @@ function vCardapio(){
 }
 function formTam(id,opts={}){
   const L=opts.layer||1;
-  const t=id?S.comp[id]:{nome:'',fatias:'',preco:'',consultar:false,pesoKg:'',adicEspecial:''};
+  const t=id?S.comp[id]:{nome:'',fatias:'',preco:'',consultar:false,pesoKg:'',adicEspecial:'',embItens:[]};
+  const embs=Object.entries(S.ing).filter(([,g])=>isEmb(g)).sort((a,b)=>(a[1].nome||'').localeCompare(b[1].nome||''));
+  const sel={};(t.embItens||[]).forEach(it=>{if(S.ing[it.ingId])sel[it.ingId]=num(it.qtd)||1});
   const sh=openSheet(id?'Editar tamanho':'Novo tamanho',`<form class="f">
     <div class="field"><label for="t${L}Nome">Nome</label><input id="t${L}Nome" name="nome" required value="${esc(t.nome)}" placeholder="Ex.: Bolo P"></div>
     <div class="grid2">
@@ -1461,12 +1612,20 @@ function formTam(id,opts={}){
       <div class="field"><label for="t${L}Kg">Peso aproximado (kg)</label><input id="t${L}Kg" name="pesoKg" inputmode="decimal" value="${inVal(t.pesoKg)}" placeholder="2,5"><small>Só para calcular o custo e o lucro.</small></div>
       <div class="field"><label for="t${L}Ad">Extra recheio especial (R$)</label><input id="t${L}Ad" name="adicEspecial" inputmode="decimal" value="${inVal(t.adicEspecial)}" placeholder="0,00"><small>Entra no pedido quando o cliente escolhe um recheio especial.</small></div>
     </div>
+    <div class="field"><span class="lbl">Embalagem deste tamanho</span>
+      ${embs.length?`<div class="list" id="t${L}Emb">${embs.map(([iid,g])=>`<label class="item static" style="gap:10px"><input type="checkbox" data-emb="${esc(iid)}" ${sel[iid]?'checked':''}><div class="main"><div class="t">${esc(g.nome)}</div><div class="s">${brl(num(g.qtd)?num(g.preco)/num(g.qtd):0)} cada</div></div><input data-embq="${esc(iid)}" inputmode="decimal" aria-label="Quantas de ${esc(g.nome)}" value="${inVal(sel[iid]||1)}" style="width:56px;text-align:center" ${sel[iid]?'':'hidden'}></label>`).join('')}</div>
+      <div class="note" id="t${L}EmbT"></div>`:`<small class="muted">Nenhuma embalagem cadastrada. Leia uma nota com caixas e bases, ou cadastre em Ingredientes → Embalagens. Enquanto isso, o pedido usa a embalagem padrão dos Ajustes (${brl(S.cfg.embalagemPadrao)}).</small>`}
+    </div>
     <div class="actions"><button class="btn primary" type="submit">Salvar</button>${id?'<button class="btn danger" type="button" data-del>Excluir tamanho</button>':''}</div>
   </form>`,L);
   const f=sh.querySelector('form');
+  const embItens=()=>Array.from(f.querySelectorAll('[data-emb]')).filter(c=>c.checked).map(c=>({ingId:c.dataset.emb,qtd:num(f.querySelector(`[data-embq="${c.dataset.emb}"]`).value)||1}));
+  const updEmb=()=>{const el=sh.querySelector(`#t${L}EmbT`);if(!el)return;const it=embItens();el.textContent=it.length?`Embalagem: ${brl(custoEmbTam({embItens:it}))} por bolo. Entra sozinho no lucro do pedido.`:`Nada marcado: o pedido usa a embalagem padrão dos Ajustes (${brl(S.cfg.embalagemPadrao)}).`};
+  f.addEventListener('change',e=>{const c=e.target.closest('[data-emb]');if(c){const q=f.querySelector(`[data-embq="${c.dataset.emb}"]`);q.hidden=!c.checked}updEmb()});
+  f.addEventListener('input',e=>{if(e.target.dataset.embq)updEmb()});updEmb();
   f.addEventListener('submit',e=>{e.preventDefault();
     const nid=id||uid();
-    save('comp',nid,{tipo:'tamanho',nome:f.nome.value.trim(),fatias:num(f.fatias.value),preco:num(f.preco.value),consultar:f.consultar.checked,pesoKg:num(f.pesoKg.value),adicEspecial:num(f.adicEspecial.value)});
+    save('comp',nid,{...(id?S.comp[id]:{}),tipo:'tamanho',nome:f.nome.value.trim(),fatias:num(f.fatias.value),preco:num(f.preco.value),consultar:f.consultar.checked,pesoKg:num(f.pesoKg.value),adicEspecial:num(f.adicEspecial.value),embItens:embItens()});
     closeSheet(L);toast('Tamanho salvo');if(opts.onSaved)opts.onSaved(nid)});
   const del=sh.querySelector('[data-del]');if(del)del.addEventListener('click',()=>armDelete(del,()=>{remove('comp',id);closeSheet(L);toast('Tamanho excluído')}));
 }
@@ -1667,7 +1826,7 @@ async function imagemPronta(cv,filename){
 
 /* ---------- eventos globais ---------- */
 document.addEventListener('click',e=>{
-  const t=e.target.closest('[data-act],[data-ped],[data-rec],[data-ing],[data-filtro],[data-rmfoto],[data-seg],[data-comp],[data-card],[data-cat],[data-tam],[data-segc],[data-goto]');if(!t)return;
+  const t=e.target.closest('[data-act],[data-ped],[data-rec],[data-ing],[data-filtro],[data-seg],[data-comp],[data-card],[data-cat],[data-tam],[data-segc],[data-goto]');if(!t)return;
   if(t.dataset.tam)return formTam(t.dataset.tam);
   if(t.dataset.segc){segCard=t.dataset.segc;return render()}
   if(t.dataset.goto){segIng=t.dataset.goto;location.hash='ingredientes';return}
@@ -1675,15 +1834,15 @@ document.addEventListener('click',e=>{
   if(t.dataset.comp)return formComp(t.dataset.comp);
   if(t.dataset.card)return formCard(t.dataset.card);
   if(t.dataset.cat!==undefined){catCard=t.dataset.cat;return render()}
-  if(t.dataset.rmfoto!==undefined){const i=+t.dataset.rmfoto;try{URL.revokeObjectURL(nota.urls[i])}catch(_){}nota.files.splice(i,1);nota.urls.splice(i,1);return render()}
   if(t.dataset.ped)return formPed(t.dataset.ped);
   if(t.dataset.rec)return formRec(t.dataset.rec);
   if(t.dataset.ing)return formIng(t.dataset.ing);
   if(t.dataset.filtro){filtroPed=t.dataset.filtro;return render()}
   const a=t.dataset.act;
   if(a==='fechar')return closeSheet(+t.dataset.layer||1);
-  if(a==='lerNota')return lerNota();
-  if(a==='pararNota'){if(nota.ctl)nota.ctl.abort();return}
+  if(a==='colarNota')return abrirTextoNota('',false);
+  if(a==='pararNota'){nota.cancel=true;if(ocrWorker){try{ocrWorker.terminate()}catch(_){}ocrWorker=null}nota.busy=false;render();return}
+  if(a==='novaEmb')return formIng(null,'embalagem');
   if(a==='novoPed')return formPed(null);
   if(a==='novaRec')return formRec(null);
   if(a==='novoIng')return formIng(null);
@@ -1701,7 +1860,7 @@ document.addEventListener('submit',e=>{
   saveCfg({nome:f.nome.value.trim(),valorHora:num(f.valorHora.value),margemPct:num(f.margemPct.value),indiretosPct:num(f.indiretosPct.value),sinalPct:num(f.sinalPct.value),horasKg:num(f.horasKg.value),embalagemPadrao:num(f.embalagemPadrao.value),whatsapp:f.whatsapp.value.trim(),instagram:f.instagram.value.trim(),email:f.email.value.trim(),site:f.site.value.trim(),pix:f.pix.value.trim(),pixTipo:f.pixTipo.value,pixNome:f.pixNome.value.trim(),pixCidade:f.pixCidade.value.trim(),linkPagamento:f.linkPagamento.value.trim(),avaliacoes:f.avaliacoes.value.trim(),endereco:f.endereco.value.trim(),horarioSem:f.horarioSem.value.trim(),horarioDom:f.horarioDom.value.trim(),prazoTopo:num(f.prazoTopo.value),prazoSem:num(f.prazoSem.value),pagamento:f.pagamento.value.trim(),decoracaoTxt:f.decoracaoTxt.value.trim(),infos:f.infos.value.split('\n').map(x=>x.trim()).filter(Boolean).join('\n')});toast('Ajustes salvos');
 });
 document.addEventListener('input',e=>{if(e.target.id==='buscaIng'){buscaIng=e.target.value;const pos=e.target.selectionStart;render();const n=$('#buscaIng');if(n){n.focus();try{n.setSelectionRange(pos,pos)}catch(_){}}}});
-document.addEventListener('change',e=>{if(e.target.id==='notaFile'){addNotaFiles(e.target.files);e.target.value=''}
+document.addEventListener('change',e=>{if(e.target.id==='notaFile'){const fs=Array.from(e.target.files||[]);e.target.value='';lerFotos(fs)}
   if(e.target.id==='rsFile'){const f=e.target.files&&e.target.files[0];e.target.value='';if(f)restaurarBackup(f)}});
 async function restaurarBackup(file){
   let j;try{j=JSON.parse(await file.text())}catch(er){toast('Esse arquivo não é um backup do app.');return}
@@ -1718,13 +1877,12 @@ async function restaurarBackup(file){
 }
 document.addEventListener('dragover',e=>{const d=e.target.closest&&e.target.closest('#drop');if(d){e.preventDefault();d.classList.add('over')}});
 document.addEventListener('dragleave',e=>{const d=e.target.closest&&e.target.closest('#drop');if(d&&!d.contains(e.relatedTarget))d.classList.remove('over')});
-document.addEventListener('drop',e=>{const d=e.target.closest&&e.target.closest('#drop');if(d){e.preventDefault();d.classList.remove('over');addNotaFiles(e.dataTransfer&&e.dataTransfer.files)}});
-document.addEventListener('paste',e=>{if(cur()!=='ingredientes'||sampleState!=='on'||nota.busy||document.querySelector('.scrim'))return;const fs=Array.from((e.clipboardData&&e.clipboardData.files)||[]).filter(f=>f.type.startsWith('image/'));if(fs.length){e.preventDefault();addNotaFiles(fs)}});
+document.addEventListener('drop',e=>{const d=e.target.closest&&e.target.closest('#drop');if(d){e.preventDefault();d.classList.remove('over');lerFotos(e.dataTransfer&&e.dataTransfer.files)}});
+document.addEventListener('paste',e=>{if(cur()!=='ingredientes'||nota.busy||document.querySelector('.scrim'))return;const fs=Array.from((e.clipboardData&&e.clipboardData.files)||[]).filter(f=>f.type.startsWith('image/'));if(fs.length){e.preventDefault();lerFotos(fs)}});
 document.addEventListener('keydown',e=>{if(e.key!=='Escape')return;const r2=document.getElementById('sheetRoot2');if(r2&&r2.innerHTML)closeSheet(2);else if(document.querySelector('.scrim'))closeSheet(1)});
 
 render();
 initStore();
-initSample();
 })();
 </script>
 <script>if('serviceWorker' in navigator&&location.protocol!=='file:')addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));</script>
