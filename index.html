@@ -2156,7 +2156,8 @@ const infosLista=()=>String(S.cfg.infos||'').split('\n').map(x=>x.trim()).filter
 function vCardapio(){
   const segs=`<div class="filters" style="margin-bottom:14px"><button data-segc="menu" aria-pressed="${segCard==='menu'}">Cardápio</button><button data-segc="fotos" aria-pressed="${segCard==='fotos'}">Fotos de bolos</button></div>`;
   const head=`<header class="top"><div><div class="eyebrow">Para seus clientes</div><h1>Cardápio</h1></div></header>
-  <div class="grid2" style="margin-bottom:12px"><button class="btn primary" data-act="imgCardapio">Gerar imagem</button><button class="btn" data-act="txtCardapio">Copiar texto</button></div>${segs}`;
+  <button class="btn primary block" data-act="pdfCardapio" style="margin-bottom:10px">Enviar cardápio em PDF</button>
+  <div class="grid2" style="margin-bottom:12px"><button class="btn" data-act="imgCardapio">Gerar imagem</button><button class="btn" data-act="txtCardapio">Copiar texto</button></div>${segs}`;
   if(segCard==='fotos')return head+vFotos();
   const sec=(t,body,edit)=>`<div class="section" style="margin-top:18px"><div class="row between"><h2>${t}</h2>${edit||''}</div>${body}</div>`;
   const chips=arr=>arr.length?`<div class="chips">${arr.map(x=>`<span class="chip2">${esc(x)}</span>`).join('')}</div>`:'<small class="muted">Nada cadastrado ainda.</small>';
@@ -2329,12 +2330,51 @@ function rodape(ctx,W,y){
 }
 async function imagemCardapio(){
   toast('Montando a imagem…');
+  const {cv}=await desenharCardapio(false);
+  imagemPronta(cv,'cardapio-bia-marques.jpg');
+}
+// cardápio em PDF: mesmo desenho da imagem, com botões e links clicáveis no fim
+async function pdfCardapio(){
+  const {cv,links}=await desenharCardapio(true);
+  const JsPDF=await getJsPDF();
+  const k=0.5,w=cv.width*k,h=cv.height*k;
+  const doc=new JsPDF({orientation:'p',unit:'pt',format:[w,h],compress:true});
+  doc.addImage(cv.toDataURL('image/jpeg',.88),'JPEG',0,0,w,h);
+  links.forEach(l=>doc.link(l.x*k,l.y*k,l.w*k,l.h*k,{url:l.url}));
+  doc.setProperties({title:`Cardápio de bolos · ${S.cfg.nome||''}`,author:S.cfg.nome||''});
+  return{blob:doc.output('blob'),cv};
+}
+function enviarCardapioPDF(){
+  const nome=`cardapio-${semAcento(S.cfg.nome||'bia-marques').toLowerCase().replace(/[^a-z0-9]+/g,'-')}.pdf`;
+  const txt=`Olá! Segue o nosso cardápio de bolos 🎂✨\nNo PDF você toca para fazer o pedido pelo WhatsApp, ver nossos bolos no Instagram e o endereço de retirada.\n\n${S.cfg.nome||''}`;
+  const sh=openSheet('Cardápio em PDF',`<div class="stack">
+    <div class="calc" data-prev style="align-items:center;min-height:140px"><span class="muted">Montando o PDF…</span></div>
+    <button class="btn primary" type="button" data-cp="share">Enviar PDF (WhatsApp e outros)</button>
+    <button class="btn" type="button" data-cp="save">Salvar PDF</button>
+    <div class="field"><label for="cpTxt">Mensagem</label><textarea id="cpTxt" style="min-height:110px">${esc(txt)}</textarea></div>
+    <small class="muted">No PDF dá para tocar em: fazer pedido no WhatsApp, Instagram, avaliações e rota até a retirada.</small>
+  </div>`,2);
+  let blob=null,url='';
+  const pronto=pdfCardapio().then(async r=>{blob=r.blob;const pv=await new Promise(res=>r.cv.toBlob(res,'image/jpeg',.8));url=URL.createObjectURL(pv);sh.querySelector('[data-prev]').innerHTML=`<img src="${url}" alt="Prévia do cardápio" style="width:100%;max-height:420px;object-fit:contain;object-position:top;border-radius:10px;border:1px solid var(--line)">`},()=>{sh.querySelector('[data-prev]').innerHTML='<span class="muted">Não consegui montar o PDF agora. Tente de novo.</span>'});
+  sh.addEventListener('click',async e=>{const b=e.target.closest('[data-cp]');if(!b)return;
+    if(!blob){b.disabled=true;await pronto;b.disabled=false}if(!blob){toast('Não consegui montar o PDF.');return}
+    const file=new File([blob],nome,{type:'application/pdf'});const ta=sh.querySelector('#cpTxt');
+    if(b.dataset.cp==='share'){try{if(navigator.canShare&&navigator.canShare({files:[file]})){await navigator.share({files:[file],title:nome,text:ta.value});return}}catch(er){if(er&&er.name==='AbortError')return}
+      try{await navigator.clipboard.writeText(ta.value)}catch(_){}const dl=await getDownloads();await dl.save({filename:nome,data:blob});toast('PDF salvo. Anexe na conversa (a mensagem já está copiada).');return}
+    const dl=await getDownloads();dl.save({filename:nome,data:blob}).then(()=>toast('PDF salvo'),()=>toast('Não consegui salvar.'))});
+}
+async function desenharCardapio(pdf){
   await fontsReady();
   const logo=await loadImg(LOGO).catch(()=>null);
-  const W=1080,P=72;
+  const W=1080,P=72;const links=[];
   const tams=compsDe('tamanho'),rec=compsDe('recheio'),tp=compsDe('topper'),inf=infosLista();
+  const c0=S.cfg;
+  const zap=c0.whatsapp?zapHref(c0.whatsapp,`Olá! Vi o cardápio da ${c0.nome||'confeitaria'} e quero encomendar um bolo 🎂`):'';
+  const insta=c0.instagram?`https://instagram.com/${encodeURIComponent(c0.instagram.replace(/^@/,'').trim())}`:'';
+  const maps=c0.endereco?`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(c0.endereco)}`:'';
+  const aval=(c0.avaliacoes||'').trim();
   const desenhar=ctx=>{
-    let y=0;
+    let y=0;links.length=0;
     ctx.fillStyle=IMG.bg;ctx.fillRect(0,0,W,ctx.canvas.height);
     ctx.fillStyle=IMG.pink;ctx.fillRect(0,0,W,520);
     if(logo){ctx.save();ctx.beginPath();ctx.arc(W/2,150,110,0,Math.PI*2);ctx.clip();ctx.drawImage(logo,W/2-110,40,220,220);ctx.restore()}
@@ -2357,13 +2397,21 @@ async function imagemCardapio(){
     if(S.cfg.decoracaoTxt){titulo('Decoração');texto(S.cfg.decoracaoTxt,'500 30px "Figtree", sans-serif',IMG.ink,42);y+=34}
     if(inf.length){titulo('Informações importantes');inf.forEach((x,i)=>{ctx.font='500 29px "Figtree", sans-serif';ctx.fillStyle=IMG.accent;ctx.fillText(`${i+1}.`,P,y);ctx.fillStyle=IMG.ink;lines(ctx,x,W-2*P-50,6).forEach(l=>{ctx.fillText(l,P+50,y);y+=40});y+=14});y+=20}
     const c=S.cfg;const rod=[c.instagram,c.whatsapp].filter(Boolean);
+    if(pdf&&(zap||insta||aval||maps)){
+      ctx.fillStyle=IMG.brand;ctx.font='700 40px "Josefin Sans", sans-serif';spaced(ctx,'FAÇA SEU PEDIDO',P,y,3);y+=22;ctx.fillStyle=IMG.soft;ctx.fillRect(P,y,W-2*P,4);y+=40;
+      if(zap){ctx.fillStyle='#25D366';rr(ctx,P,y,W-2*P,96,48);ctx.fill();ctx.fillStyle='#FFFFFF';ctx.font='800 36px "Figtree", sans-serif';ctx.textAlign='center';ctx.fillText('Fazer meu pedido no WhatsApp ›',W/2,y+61);ctx.textAlign='left';links.push({x:P,y,w:W-2*P,h:96,url:zap});y+=126}
+      const rows=[insta&&['Veja nossos bolos no Instagram',c.instagram,insta],aval&&['Veja nossas avaliações','O que nossos clientes dizem',aval],maps&&['Ver rota até a retirada',c.endereco,maps]].filter(Boolean);
+      if(rows.length){const h=rows.length*104+20;ctx.fillStyle=IMG.pink;rr(ctx,P,y,W-2*P,h,28);ctx.fill();let ry=y+10;
+        rows.forEach(([l1,l2,u],i)=>{if(i){ctx.fillStyle=IMG.soft;ctx.fillRect(P+36,ry,W-2*P-72,2)}ctx.fillStyle=IMG.ink;ctx.font='700 32px "Figtree", sans-serif';ctx.fillText(l1,P+36,ry+46);ctx.fillStyle=IMG.accent;ctx.font='600 27px "Figtree", sans-serif';ctx.fillText(lines(ctx,l2,W-2*P-140,1)[0],P+36,ry+84);
+          ctx.font='700 44px "Figtree", sans-serif';ctx.textAlign='right';ctx.fillText('›',W-P-36,ry+66);ctx.textAlign='left';links.push({x:P,y:ry,w:W-2*P,h:104,url:u});ry+=104});y+=h+40}
+    }
     ctx.fillStyle=IMG.pink;ctx.fillRect(0,y,W,rod.length?150:60);
     if(rod.length){ctx.textAlign='center';ctx.fillStyle=IMG.accent;ctx.font='700 34px "Figtree", sans-serif';ctx.fillText(rod.join('   ·   '),W/2,y+70);if(c.endereco){ctx.fillStyle=IMG.muted;ctx.font='500 26px "Figtree", sans-serif';ctx.fillText(`Retirada: ${c.endereco}`,W/2,y+112)}ctx.textAlign='left';y+=150}else y+=60;
     return y;
   };
   const t=document.createElement('canvas');t.width=W;t.height=10;const H=desenhar(t.getContext('2d'));
   const cv=document.createElement('canvas');cv.width=W;cv.height=Math.min(H,16000);desenhar(cv.getContext('2d'));
-  imagemPronta(cv,'cardapio-bia-marques.jpg');
+  return{cv,links:links.slice()};
 }
 async function imagemBolo(id){
   const it=S.card[id];if(!it)return;
@@ -2432,6 +2480,7 @@ document.addEventListener('click',e=>{
   if(a==='novoComp')return formComp(null,t.dataset.tipo);
   if(a==='novoCard')return formCard(null);
   if(a==='novoTam')return formTam(null);
+  if(a==='pdfCardapio')return enviarCardapioPDF();
   if(a==='imgCardapio')return imagemCardapio();
   if(a==='txtCardapio')return textoCardapio();
   if(a==='sair'){if(sb)sb.auth.signOut();return}

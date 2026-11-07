@@ -83,3 +83,7 @@ Sirva a pasta com qualquer servidor estático (ex.: `npx serve .`). Para trazer 
 - "Selecionar" (`gal.sel`, até 10): enviar ou publicar várias de uma vez (carrossel).
 - `desenharPost` tem o formato `'original'` (proporção da foto, até 1800 px) usado no envio; a logo do estilo "logo" escala com a foto.
 - Arquivos só são apagados do bucket quando a foto não está mais em pedido, cardápio nem galeria (`fotoNaGaleriaOuPedido`).
+
+## Cardápio em PDF
+
+- Cardápio → "Enviar cardápio em PDF" (`enviarCardapioPDF` → `pdfCardapio`). `desenharCardapio(pdf)` é o mesmo desenho da imagem ("Gerar imagem"); no PDF entra o bloco "Faça seu pedido" com links clicáveis (jsPDF `doc.link`): botão verde "Fazer meu pedido no WhatsApp" (wa.me com mensagem pronta), Instagram, avaliações (`cfg.avaliacoes`) e rota até a retirada (Google Maps). Enviar abre o Compartilhar com o PDF e a mensagem; sem isso, salva o PDF e copia a mensagem.
