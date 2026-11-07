@@ -106,7 +106,7 @@ header.top{display:flex;justify-content:space-between;align-items:flex-end;gap:1
 .note.warn{border:1px solid var(--warn)}
 
 .tabs{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px);padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px)}
-.tabs nav{display:grid;grid-template-columns:repeat(5,1fr);max-width:640px;margin:0 auto}
+.tabs nav{display:grid;grid-template-columns:repeat(6,1fr);max-width:640px;margin:0 auto}
 .tabs a{display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 0 7px;color:var(--muted);text-decoration:none;font-size:.68rem;font-weight:600}
 .tabs a svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .tabs a[aria-current="page"]{color:var(--accent)}
@@ -182,6 +182,13 @@ details summary{list-style-position:inside}
 .sigbox{position:relative;background:#fff;border:1.5px dashed var(--brand);border-radius:14px;overflow:hidden;touch-action:none}
 .sigbox canvas{display:block;width:100%;height:auto;touch-action:none;cursor:crosshair}
 .sigbox img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#fff;pointer-events:none}
+.ggrid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding-bottom:90px}
+.gcell{position:relative;aspect-ratio:1;border:0;padding:0;border-radius:10px;overflow:hidden;background:var(--soft);cursor:pointer}
+.gcell img{width:100%;height:100%;object-fit:cover;display:block}
+.gcell.on{outline:4px solid var(--accent);outline-offset:-4px}
+.gcell.on img{opacity:.8}
+.gnum{position:absolute;top:6px;right:6px;width:26px;height:26px;border-radius:50%;background:var(--accent);color:#fff;font-weight:800;font-size:.85rem;display:flex;align-items:center;justify-content:center}
+.gbar{position:fixed;left:0;right:0;bottom:calc(64px + env(safe-area-inset-bottom,0px));z-index:5;display:grid;grid-template-columns:1fr 2fr;gap:10px;padding:10px 16px;background:var(--surface);border-top:1px solid var(--line);max-width:640px;margin:0 auto}
 .revrow{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:10px}
 .revrow.off{opacity:.55}
 .revrow.off .field,.revrow.off .grid3{display:none}
@@ -204,6 +211,7 @@ a.note{display:block;color:var(--ink);text-decoration:none}
   <a href="#inicio" data-t="inicio"><svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z"/></svg>Início</a>
   <a href="#pedidos" data-t="pedidos"><svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>Pedidos</a>
   <a href="#cardapio" data-t="cardapio"><svg viewBox="0 0 24 24"><path d="M4 20h16M5 20v-6h14v6M7 14v-3h10v3M12 11V8"/><path d="M12 8c-1.2-1-1.2-2.6 0-4 1.2 1.4 1.2 3 0 4z"/></svg>Cardápio</a>
+  <a href="#galeria" data-t="galeria"><svg viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="2"/><circle cx="9" cy="10" r="1.8"/><path d="M4 17l5-4.5 3.5 3 3-2.5 4.5 4"/></svg>Galeria</a>
   <a href="#receitas" data-t="receitas"><svg viewBox="0 0 24 24"><path d="M6 3h11a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M8 3v18M11 8h4M11 12h4"/></svg>Receitas</a>
   <a href="#ingredientes" data-t="ingredientes"><svg viewBox="0 0 24 24"><path d="M8 3h8v3H8zM7 6h10l1 3v10a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V9z"/><path d="M6 12h12"/></svg>Ingredientes</a>
 
@@ -246,16 +254,16 @@ const DEFAULT_CFG={nome:'Bia Marques Confeitaria',valorHora:25,indiretosPct:10,m
   pagamento:'Pix, transferência, cartão de débito, crédito e link de pagamento (parcelamos até 5x com juros da máquina)',
   decoracaoTxt:'Decoração com glitter, pintura, desenho e escrita flork: valor a consultar, pois depende do tamanho do bolo.',
   infos:['Você pode escolher duas opções de recheio e uma opção de massa.','O pedido só é feito mediante um pagamento de 50% do valor. Caso seja via cartão, enviamos o link de pagamento.','Aceitamos transferências, Pix, cartão de débito, crédito e link de pagamento (parcelamos até 5x com juros da máquina).','Os valores apresentados são iniciais, com recheios e sem topo de bolo. Recheios especiais e tipos de decoração alteram o valor.','Não fazemos entrega. O local de retirada é na Rua Amapá 227, Araras.','Você pode optar por entrega via motorista de aplicativo, porém precisa pedir no seu aplicativo e o transporte é de responsabilidade do cliente.','Não trabalhamos com pronta entrega: pedidos com topo de bolo pedimos 3 dias e pedidos sem topo de bolo pedimos 2 dias.','Horário de retirada: de segunda a sábado das 9h às 18h e domingo das 9h às 12h. Lembrando que é preciso retirar no horário combinado.'].join('\n')};
-const COLS={ing:'ingredientes',rec:'receitas',ped:'pedidos',comp:'componentes',card:'cardapio'};
-const S={mode:'carregando',loaded:false,note:'',ing:{},rec:{},ped:{},comp:{},card:{},cfg:{...DEFAULT_CFG},db:null};
+const COLS={ing:'ingredientes',rec:'receitas',ped:'pedidos',comp:'componentes',card:'cardapio',gal:'galeria'};
+const S={mode:'carregando',loaded:false,note:'',ing:{},rec:{},ped:{},comp:{},card:{},gal:{},cfg:{...DEFAULT_CFG},db:null};
 const LKEY='bia-marques-v1';
 let sb=null,recuperando=false,usuarioEmail='';
 const NUVEM=window.BIA_CONFIG||{};
 const temNuvem=()=>!!(NUVEM.supabaseUrl&&NUVEM.supabaseKey);
 const T_DOCS='bia_docs',BUCKET='bia-fotos';
 
-function loadLocal(){try{const j=JSON.parse(localStorage.getItem(LKEY)||'null');if(j){S.ing=j.ing||{};S.rec=j.rec||{};S.ped=j.ped||{};S.comp=j.comp||{};S.card=j.card||{};S.cfg={...DEFAULT_CFG,...(j.cfg||{})}}}catch(e){}S.loaded=true}
-function saveLocal(){try{localStorage.setItem(LKEY,JSON.stringify({ing:S.ing,rec:S.rec,ped:S.ped,comp:S.comp,card:S.card,cfg:S.cfg}))}catch(e){toast('Não consegui salvar neste aparelho.')}}
+function loadLocal(){try{const j=JSON.parse(localStorage.getItem(LKEY)||'null');if(j){S.ing=j.ing||{};S.rec=j.rec||{};S.ped=j.ped||{};S.comp=j.comp||{};S.card=j.card||{};S.gal=j.gal||{};S.cfg={...DEFAULT_CFG,...(j.cfg||{})}}}catch(e){}S.loaded=true}
+function saveLocal(){try{localStorage.setItem(LKEY,JSON.stringify({ing:S.ing,rec:S.rec,ped:S.ped,comp:S.comp,card:S.card,gal:S.gal,cfg:S.cfg}))}catch(e){toast('Não consegui salvar neste aparelho.')}}
 
 async function initStore(){
   if(!temNuvem()){S.mode='local';loadLocal();render();return}
@@ -411,7 +419,7 @@ const saldo=p=>Math.max(0,num(p.valor)-num(p.sinal));
 const pedidosOrdenados=()=>Object.entries(S.ped).map(([id,p])=>({id,...p})).sort((a,b)=>(a.entrega||'9999').localeCompare(b.entrega||'9999')||(a.hora||'').localeCompare(b.hora||''));
 
 /* ---------- navegação ---------- */
-const TABS=['inicio','pedidos','cardapio','receitas','ingredientes','ajustes'];
+const TABS=['inicio','pedidos','cardapio','galeria','receitas','ingredientes','ajustes'];
 let filtroPed='proximos',buscaIng='',segIng='ing';
 const cur=()=>{const h=location.hash.replace('#','');return TABS.includes(h)?h:'inicio'};
 window.addEventListener('hashchange',()=>{closeSheet(2);closeSheet(1);render();window.scrollTo(0,0)});
@@ -421,7 +429,7 @@ function render(){
   document.querySelectorAll('#tabs a').forEach(a=>a.setAttribute('aria-current',a.dataset.t===t?'page':'false'));
   if(S.mode==='carregando')return;
   const v=$('#view');
-  const views={inicio:vInicio,pedidos:vPedidos,cardapio:vCardapio,receitas:vReceitas,ingredientes:vIngredientes,ajustes:vAjustes};
+  const views={inicio:vInicio,pedidos:vPedidos,cardapio:vCardapio,galeria:vGaleria,receitas:vReceitas,ingredientes:vIngredientes,ajustes:vAjustes};
   v.innerHTML=(S.note?`<div class="note warn" style="margin-top:8px">${esc(S.note)}</div>`:'')+views[t]();
   if(t==='ajustes')ligarAssinatura();
 }
@@ -912,7 +920,7 @@ function formPed(id,prefill){
   const gp=sh.querySelector('[data-galped]');if(gp)galeriaPedido(gp,id);
   const pb=sh.querySelector('#pPost');if(pb)pb.addEventListener('click',()=>criarPost(id));
   sh.querySelector('#pZap').addEventListener('click',()=>openEnvio(read(),id));
-  const del=sh.querySelector('#pDel');if(del)del.addEventListener('click',()=>armDelete(del,async()=>{const fts=((S.ped[id]&&S.ped[id].fotos)||[]).filter(f=>typeof f==='string'&&!Object.values(S.card).some(c=>(c.fotos||[]).includes(f)));remove('ped',id);closeSheet();toast('Pedido excluído');if(fts.length){const a=await getAssets();if(a)fts.forEach(f=>a.delete(f).catch(()=>{}))}}));
+  const del=sh.querySelector('#pDel');if(del)del.addEventListener('click',()=>armDelete(del,async()=>{const fts=((S.ped[id]&&S.ped[id].fotos)||[]).filter(f=>typeof f==='string'&&!Object.values(S.card).some(c=>(c.fotos||[]).includes(f))&&!Object.values(S.gal||{}).some(g=>g.foto===f&&!g.oculta));remove('ped',id);closeSheet();toast('Pedido excluído');if(fts.length){const a=await getAssets();if(a)fts.forEach(f=>a.delete(f).catch(()=>{}))}}));
 }
 function msgPedido(p,extra){
   const c=S.cfg;const d=parseD(p.entrega);
@@ -1219,7 +1227,7 @@ function galeriaPedido(box,id,onChange){
     }});
   box.addEventListener('click',async e=>{const b=e.target.closest('[data-rmfp]');if(!b)return;
     const lista=[...fotosDe(id)];const [rm]=lista.splice(+b.dataset.rmfp,1);gravar(lista);
-    if(typeof rm==='string'&&!Object.values(S.card).some(c=>(c.fotos||[]).includes(rm))){const a=await getAssets();if(a)a.delete(rm).catch(()=>{})}});
+    if(typeof rm==='string'&&!Object.values(S.card).some(c=>(c.fotos||[]).includes(rm))&&!Object.values(S.gal||{}).some(g=>g.foto===rm&&!g.oculta)){const a=await getAssets();if(a)a.delete(rm).catch(()=>{})}});
   draw();
   return draw;
 }
@@ -1262,7 +1270,8 @@ let logoImgCache=null;
 async function desenharPost(img,fmt,estilo,texto){
   await fontsReady();
   if(!logoImgCache)logoImgCache=await loadImg(LOGO).catch(()=>null);
-  const {w:W,h:H}=FMT_POST[fmt]||FMT_POST.feed,c=S.cfg;
+  let {w:W,h:H}=FMT_POST[fmt]||FMT_POST.feed;const c=S.cfg;
+  if(fmt==='original'){const iw=img.width||img.naturalWidth,ih=img.height||img.naturalHeight,k=Math.min(1,1800/Math.max(iw,ih));W=Math.round(iw*k);H=Math.round(ih*k)}
   const cv=document.createElement('canvas');cv.width=W;cv.height=H;const ctx=cv.getContext('2d');
   const selo=(cx,cy,r)=>{if(!logoImgCache)return;ctx.save();ctx.shadowColor='rgba(0,0,0,.25)';ctx.shadowBlur=18;ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(cx,cy,r+8,0,Math.PI*2);ctx.fill();ctx.restore();
     ctx.save();ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.clip();ctx.drawImage(logoImgCache,cx-r,cy-r,r*2,r*2);ctx.restore()};
@@ -1281,7 +1290,7 @@ async function desenharPost(img,fmt,estilo,texto){
     ctx.textAlign='left';return cv;
   }
   cover(ctx,img,0,0,W,H,0);
-  if(estilo==='logo'){selo(W-92,H-92,56);return cv}
+  if(estilo==='logo'){const k=Math.min(W,H)/1080;selo(W-92*k,H-92*k,56*k);return cv}
   if(estilo==='faixa'){
     const fh=fmt==='stories'?340:250;const g=ctx.createLinearGradient(0,H-fh-120,0,H);g.addColorStop(0,'rgba(58,36,49,0)');g.addColorStop(.45,'rgba(58,36,49,.55)');g.addColorStop(1,'rgba(58,36,49,.85)');
     ctx.fillStyle=g;ctx.fillRect(0,H-fh-120,W,fh+120);
@@ -1294,9 +1303,9 @@ async function desenharPost(img,fmt,estilo,texto){
   }
   return cv;
 }
-function criarPost(id){
-  const p=S.ped[id];if(!p)return;
-  const fs=fotosDe(id);if(!fs.length){toast('Adicione as fotos do bolo primeiro.');return}
+function criarPost(id,extra){
+  const p=id?S.ped[id]:((extra&&extra.p)||{});if(!p)return;
+  const fs=(extra&&extra.fotos)||fotosDe(id);if(!fs.length){toast('Adicione as fotos do bolo primeiro.');return}
   const dp=dadosPost(p);let lv=0,legMexida=false;
   const st={fmt:'feed',estilo:'logo',sel:fs.map((_,i)=>i),imgs:[],texto:textoFotoPost(p)};
   const sh=openSheet('Post para o Instagram',`<div class="stack">
@@ -1342,7 +1351,7 @@ function criarPost(id){
     b.disabled=true;const t0=b.textContent;b.textContent='Preparando…';
     try{const files=await gerar();
       if(k==='ig'){try{await navigator.clipboard.writeText(leg.value)}catch(_){}
-        if(navigator.canShare&&navigator.canShare({files})){try{await navigator.share({files});save('ped',id,{...S.ped[id],postEm:new Date().toISOString()});toast('Legenda copiada: cole no Instagram.')}catch(er){if(!(er&&er.name==='AbortError'))toast('Não consegui abrir o Compartilhar. Use Salvar fotos.')}}
+        if(navigator.canShare&&navigator.canShare({files})){try{await navigator.share({files});if(id&&S.ped[id])save('ped',id,{...S.ped[id],postEm:new Date().toISOString()});toast('Legenda copiada: cole no Instagram.')}catch(er){if(!(er&&er.name==='AbortError'))toast('Não consegui abrir o Compartilhar. Use Salvar fotos.')}}
         else{const dl=await getDownloads();for(const f of files)await dl.save({filename:f.name,data:f});window.open('https://www.instagram.com/','_blank','noopener');toast('Fotos salvas e legenda copiada. No Instagram, crie o post com as fotos salvas.')}}
       else{const dl=await getDownloads();for(const f of files)await dl.save({filename:f.name,data:f});toast(files.length>1?'Fotos salvas':'Foto salva')}}
     finally{b.disabled=false;b.textContent=t0}
@@ -1376,6 +1385,112 @@ function paraCardapio(id){
   const ja=Object.entries(S.card).find(([,c])=>c.pedidoId===id);
   save('card',ja?ja[0]:null,{...(ja?ja[1]:{}),nome,categoria:(ja&&ja[1].categoria)||'',descricao:p.descricao||'',fotos:fs.slice(0,6),tamanhoId:p.tamanhoId||'',massaId:p.massaId||'',recheioIds:(p.recheioIds||[]).slice(),coberturaId:p.coberturaId||'',pedidoId:id});
   toast(ja?'Fotos do cardápio atualizadas':'Bolo colocado nas fotos do cardápio');
+}
+
+/* ---------- galeria: todas as fotos dos bolos ---------- */
+// junta as fotos adicionadas na galeria, as dos pedidos e as do cardápio (sem repetir)
+const gal={sel:null,cat:'',enviando:0,logo:true};
+function itensGaleria(){
+  const m=new Map(),ocultas=new Set();
+  Object.entries(S.gal||{}).forEach(([gid,g])=>{if(!g||!g.foto)return;if(g.oculta){ocultas.add(g.foto);return}m.set(g.foto,{foto:g.foto,titulo:g.titulo||'',categoria:g.categoria||'',data:g.criado||'',galId:gid})});
+  Object.entries(S.card).forEach(([cid,c])=>(c.fotos||[]).forEach(f=>{const x=m.get(f);if(x){x.cardId=cid;x.titulo=x.titulo||c.nome||'';x.categoria=x.categoria||c.categoria||''}else m.set(f,{foto:f,titulo:c.nome||'',categoria:c.categoria||'',data:c.criado||'',cardId:cid})}));
+  Object.entries(S.ped).forEach(([pid,p])=>(Array.isArray(p.fotos)?p.fotos:[]).forEach(f=>{if(typeof f!=='string')return;const t=dadosPost(p).tema||String(p.descricao||'').split('\n')[0].slice(0,40);const x=m.get(f);
+    if(x){x.pedId=pid;x.titulo=x.titulo||t;x.data=x.data||p.entrega||''}else m.set(f,{foto:f,titulo:t,categoria:'',data:p.entrega||p.criado||'',pedId:pid})}));
+  return[...m.values()].filter(x=>!ocultas.has(x.foto)).sort((a,b)=>String(b.data).localeCompare(String(a.data)));
+}
+function vGaleria(){
+  const all=itensGaleria();
+  const cats=[...new Set(all.map(i=>i.categoria).filter(Boolean))];
+  if(gal.cat&&!cats.includes(gal.cat))gal.cat='';
+  const its=gal.cat?all.filter(i=>i.categoria===gal.cat):all;
+  const sel=gal.sel;
+  return`<header class="top"><div><div class="eyebrow">Fotos dos seus bolos</div><h1>Galeria</h1></div>${all.length?`<button class="btn ghost" data-act="galSel" style="min-height:36px">${sel?'Cancelar':'Selecionar'}</button>`:''}</header>
+  ${sb?`<input class="vh" id="galFile" type="file" accept="image/*" multiple tabindex="-1">
+    <label class="btn primary block" for="galFile" style="margin-bottom:12px">${gal.enviando?`Enviando ${gal.enviando} foto${gal.enviando>1?'s':''}…`:'+ Adicionar fotos'}</label>`
+    :'<div class="note" style="margin-bottom:12px">Para guardar fotos na galeria, entre com a sua conta.</div>'}
+  ${cats.length?`<div class="filters" style="margin-bottom:12px"><button data-galcat="" aria-pressed="${!gal.cat}">Todas</button>${cats.map(c=>`<button data-galcat="${esc(c)}" aria-pressed="${c===gal.cat}">${esc(c)}</button>`).join('')}</div>`:''}
+  ${sel?`<p class="muted" style="margin:0 0 10px">Toque nas fotos para escolher. ${sel.length?`<b>${sel.length} escolhida${sel.length>1?'s':''}</b>.`:''}</p>`:''}
+  ${its.length?`<div class="ggrid">${its.map(it=>{const k=sel?sel.indexOf(it.foto):-1;return`<button class="gcell${k>=0?' on':''}" data-galfoto="${esc(it.foto)}" aria-label="${esc(it.titulo||'Foto de bolo')}"><img src="${esc(blobUrl(it.foto))}" alt="" loading="lazy">${k>=0?`<span class="gnum">${k+1}</span>`:''}</button>`}).join('')}</div>`
+    :`<div class="empty"><strong>${all.length?'Nada nesta categoria':'Nenhuma foto ainda'}</strong>${all.length?'Escolha outra categoria.':'Adicione as fotos dos bolos que você já fez. As fotos dos pedidos e do cardápio aparecem aqui sozinhas.'}</div>`}
+  ${sel?`<div class="gbar"><button class="btn" data-act="galEnviar" ${sel.length?'':'disabled'}>Enviar</button><button class="btn primary" data-act="galPublicar" ${sel.length?'':'disabled'}>Publicar no Instagram</button></div>`:''}`;
+}
+async function galUpload(list){
+  const fs=Array.from(list||[]).filter(f=>f&&f.type&&f.type.startsWith('image/'));if(!fs.length)return;
+  const a=await getAssets();if(!a){toast('Para guardar fotos na galeria, entre com a sua conta.');return}
+  gal.enviando+=fs.length;render();let ok=0;
+  for(const f of fs){
+    try{const blob=await prepImg(f,1800,.88);const r=await a.upload(blob);await save('gal',null,{foto:r.id,titulo:'',categoria:gal.cat||'',criado:new Date().toISOString()});ok++}
+    catch(e){toast(e&&e.code==='quota_exceeded'?'O espaço de fotos acabou. Remova fotos antigas.':'Uma foto não foi enviada. Tente de novo.')}
+    gal.enviando--;render();
+  }
+  if(ok)toast(ok>1?`${ok} fotos na galeria`:'Foto na galeria');
+}
+const fotoNaGaleriaOuPedido=f=>Object.values(S.gal||{}).some(g=>g.foto===f&&!g.oculta)||Object.values(S.ped).some(p=>Array.isArray(p.fotos)&&p.fotos.includes(f));
+const galItem=foto=>itensGaleria().find(x=>x.foto===foto);
+// imagem pronta para enviar: tamanho original, com ou sem a logo no canto
+async function arquivosGaleria(fotos,logo,nome){
+  const out=[];for(const [i,f] of fotos.entries()){const img=await loadAsset(f);if(!img)continue;const cv=await desenharPost(img,'original',logo?'logo':'nada','');
+    const b=await new Promise(r=>cv.toBlob(r,'image/jpeg',.92));out.push(new File([b],`${nome||'bolo'}-${i+1}.jpg`,{type:'image/jpeg'}))}
+  return out;
+}
+async function enviarFotos(fotos,logo,texto){
+  const nome=semAcento(S.cfg.nome||'bia-marques').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/-confeitaria$/,'');
+  const files=await arquivosGaleria(fotos,logo,nome);if(!files.length){toast('Não consegui preparar as fotos. Confira a internet.');return}
+  if(navigator.canShare&&navigator.canShare({files})){try{const d={files};if(texto)d.text=texto;await navigator.share(d)}catch(er){if(!(er&&er.name==='AbortError'))toast('Não consegui abrir o Compartilhar.')}return}
+  const dl=await getDownloads();for(const f of files)await dl.save({filename:f.name,data:f});toast(files.length>1?'Fotos salvas no aparelho':'Foto salva no aparelho');
+}
+function formEnviarFotos(fotos){
+  const sh=openSheet(fotos.length>1?`Enviar ${fotos.length} fotos`:'Enviar foto',`<div class="stack">
+    <label class="row" style="gap:10px;align-items:flex-start"><input type="checkbox" data-logo ${gal.logo?'checked':''}><span><b>Colocar a logo no canto</b><br><small class="muted">Assim quem receber sabe de quem é o bolo, mesmo se a foto for repassada.</small></span></label>
+    <div class="calc" data-pv style="align-items:center;min-height:160px"><span class="muted">Montando…</span></div>
+    <div class="field"><label for="gfTxt">Mensagem (opcional)</label><textarea id="gfTxt" style="min-height:90px" placeholder="Ex.: Olha alguns bolos que já fiz!">${esc(`Alguns bolos da ${S.cfg.nome||'Bia Marques Confeitaria'} 🎂✨${S.cfg.instagram?`\nVeja mais no Instagram: ${S.cfg.instagram}`:''}`)}</textarea></div>
+    <button class="btn primary" type="button" data-gf="share">Enviar (WhatsApp e outros)</button>
+    <button class="btn" type="button" data-gf="save">Salvar no celular</button>
+  </div>`,2);
+  const pv=sh.querySelector('[data-pv]'),ck=sh.querySelector('[data-logo]');let url='';
+  const prev=async()=>{const img=await loadAsset(fotos[0]);if(!img){pv.innerHTML='<span class="muted">Não consegui abrir a foto.</span>';return}const cv=await desenharPost(img,'original',ck.checked?'logo':'nada','');const b=await new Promise(r=>cv.toBlob(r,'image/jpeg',.85));if(url)URL.revokeObjectURL(url);url=URL.createObjectURL(b);
+    pv.innerHTML=`<img src="${url}" alt="Prévia" style="max-width:100%;max-height:360px;border-radius:10px">${fotos.length>1?`<small class="muted">E mais ${fotos.length-1}.</small>`:''}`};
+  ck.addEventListener('change',()=>{gal.logo=ck.checked;prev()});prev();
+  sh.addEventListener('click',async e=>{const b=e.target.closest('[data-gf]');if(!b)return;b.disabled=true;const t=b.textContent;b.textContent='Preparando…';
+    try{if(b.dataset.gf==='share')await enviarFotos(fotos,ck.checked,sh.querySelector('#gfTxt').value.trim());
+      else{const files=await arquivosGaleria(fotos,ck.checked,'bolo');const dl=await getDownloads();for(const f of files)await dl.save({filename:f.name,data:f});toast(files.length>1?'Fotos salvas':'Foto salva')}}
+    finally{b.disabled=false;b.textContent=t}});
+}
+function verFotoGaleria(foto){
+  const it=galItem(foto);if(!it)return;
+  const cats=[...new Set([...CATS,...itensGaleria().map(x=>x.categoria).filter(Boolean)])];
+  let cat=it.categoria||'';
+  const origem=[it.pedId&&S.ped[it.pedId]?`do pedido de ${esc(S.ped[it.pedId].cliente||'cliente')}`:'',it.cardId?'está no cardápio':''].filter(Boolean).join(' · ');
+  const sh=openSheet('Foto do bolo',`<div class="stack">
+    <img src="${esc(blobUrl(foto))}" alt="${esc(it.titulo||'Foto do bolo')}" style="width:100%;max-height:60vh;object-fit:contain;border-radius:14px;background:var(--soft)">
+    ${origem?`<small class="muted">Foto ${origem}.</small>`:''}
+    <div class="field"><label for="gTit">Nome ou tema</label><input id="gTit" value="${esc(it.titulo)}" placeholder="Ex.: Bolo Sonic"></div>
+    <div class="field"><span class="lbl">Categoria</span><div class="pills" data-gcats>${cats.map(c=>`<button type="button" class="pill" data-c="${esc(c)}" aria-pressed="${c===cat}">${esc(c)}</button>`).join('')}</div></div>
+    <button class="btn primary" type="button" data-gv="enviar">Enviar para alguém</button>
+    <button class="btn primary" type="button" data-gv="post">Publicar no Instagram</button>
+    <div class="grid2"><button class="btn" type="button" data-gv="salvar">Salvar no celular</button>${it.cardId?`<button class="btn" type="button" data-gv="vercard">Ver no cardápio</button>`:`<button class="btn" type="button" data-gv="card">Colocar no cardápio</button>`}</div>
+    <button class="btn danger" type="button" data-gv="del">${it.pedId||it.cardId?'Tirar da galeria':'Excluir foto'}</button>
+  </div>`);
+  const tit=sh.querySelector('#gTit');
+  // guarda nome e categoria (num registro da galeria, mesmo para fotos de pedido ou cardápio)
+  const gravarMeta=()=>{const t=tit.value.trim();if(t===(it.titulo||'')&&cat===(it.categoria||''))return;const ex=Object.entries(S.gal||{}).find(([,g])=>g.foto===foto&&!g.oculta);
+    save('gal',ex?ex[0]:null,{...(ex?ex[1]:{criado:it.data||new Date().toISOString()}),foto,titulo:t,categoria:cat});it.titulo=t;it.categoria=cat};
+  tit.addEventListener('change',gravarMeta);
+  sh.querySelector('[data-gcats]').addEventListener('click',e=>{const b=e.target.closest('[data-c]');if(!b)return;cat=cat===b.dataset.c?'':b.dataset.c;sh.querySelectorAll('[data-c]').forEach(x=>x.setAttribute('aria-pressed',x.dataset.c===cat));gravarMeta()});
+  sh.addEventListener('click',async e=>{const b=e.target.closest('[data-gv]');if(!b)return;const k=b.dataset.gv;gravarMeta();
+    if(k==='enviar')return formEnviarFotos([foto]);
+    if(k==='post')return criarPost(null,{fotos:[foto],p:{descricao:tit.value.trim(),cliente:''}});
+    if(k==='salvar'){const files=await arquivosGaleria([foto],false,'bolo');const dl=await getDownloads();for(const f of files)await dl.save({filename:f.name,data:f});toast('Foto salva');return}
+    if(k==='vercard'){closeSheet();segCard='fotos';location.hash='cardapio';setTimeout(()=>formCard(it.cardId),50);return}
+    if(k==='card'){const nome=tit.value.trim()||'Bolo personalizado';const p=it.pedId&&S.ped[it.pedId];
+      const cid=await save('card',null,{nome,categoria:cat,descricao:p?p.descricao||'':'',fotos:[foto],tamanhoId:p?p.tamanhoId||'':'',massaId:p?p.massaId||'':'',recheioIds:p?(p.recheioIds||[]).slice():[],coberturaId:p?p.coberturaId||'':'',pedidoId:it.pedId||''});
+      it.cardId=cid;toast('Foto colocada no cardápio');closeSheet();return}
+    if(k==='del')armDelete(b,async()=>{
+      const gs=Object.entries(S.gal||{}).filter(([,g])=>g.foto===foto);
+      if(it.pedId||it.cardId){for(const [gid] of gs)await remove('gal',gid);await save('gal',null,{foto,oculta:true,criado:new Date().toISOString()});toast('Foto tirada da galeria')}
+      else{for(const [gid] of gs)await remove('gal',gid);const a=await getAssets();if(a)a.delete(foto).catch(()=>{});toast('Foto excluída')}
+      closeSheet()});
+  });
 }
 
 /* ---------- pagamentos e recibo ---------- */
@@ -2166,7 +2281,7 @@ function formCard(id){
       drawPills();return}
     if(e.target.closest('[data-pedir]')){const x=S.card[id];closeSheet();formPed(null,{cardapioId:id,tamanhoId:x.tamanhoId||'',massaId:x.massaId||'',recheioIds:(x.recheioIds||[]).slice(),coberturaId:x.coberturaId||'',descricao:`Igual à foto: ${x.nome}`});return}
     if(e.target.closest('[data-img]')){imagemBolo(id);return}
-    const del=e.target.closest('[data-del]');if(del)armDelete(del,async()=>{const old=(S.card[id]&&S.card[id].fotos)||[];remove('card',id);closeSheet();toast('Bolo removido');const a=await getAssets();if(a)old.forEach(fid=>a.delete(fid).catch(()=>{}))});
+    const del=e.target.closest('[data-del]');if(del)armDelete(del,async()=>{const old=(S.card[id]&&S.card[id].fotos)||[];remove('card',id);closeSheet();toast('Bolo removido');const a=await getAssets();if(a)old.filter(f=>!fotoNaGaleriaOuPedido(f)).forEach(fid=>a.delete(fid).catch(()=>{}))});
   });
   f.addEventListener('input',e=>{if(e.target.name==='catOutra'&&e.target.value.trim()){st.categoria=e.target.value.trim();drawCats()}});
   f.addEventListener('submit',async e=>{e.preventDefault();
@@ -2174,7 +2289,7 @@ function formCard(id){
     const obj={nome:f.nome.value.trim(),categoria:(f.catOutra.value.trim()||st.categoria),descricao:f.descricao.value.trim(),fotos:st.fotos.slice(),tamanhoId:st.tamanhoId,massaId:st.massaId,recheioIds:st.recheioIds.slice(),coberturaId:st.coberturaId};
     const removed=((id&&S.card[id]&&S.card[id].fotos)||[]).filter(x=>!obj.fotos.includes(x));
     save('card',id,obj);closeSheet();toast('Bolo salvo');
-    if(removed.length){const a=await getAssets();if(a)removed.forEach(fid=>a.delete(fid).catch(()=>{}))}
+    const livres=removed.filter(f=>!fotoNaGaleriaOuPedido(f));if(livres.length){const a=await getAssets();if(a)livres.forEach(fid=>a.delete(fid).catch(()=>{}))}
   });
 }
 function textoCardapio(){
@@ -2287,7 +2402,9 @@ async function imagemPronta(cv,filename){
 
 /* ---------- eventos globais ---------- */
 document.addEventListener('click',e=>{
-  const t=e.target.closest('[data-act],[data-ped],[data-rec],[data-ing],[data-filtro],[data-seg],[data-comp],[data-card],[data-cat],[data-tam],[data-segc],[data-goto]');if(!t)return;
+  const t=e.target.closest('[data-galfoto],[data-galcat],[data-act],[data-ped],[data-rec],[data-ing],[data-filtro],[data-seg],[data-comp],[data-card],[data-cat],[data-tam],[data-segc],[data-goto]');if(!t)return;
+  if(t.dataset.galfoto){const f=t.dataset.galfoto;if(gal.sel){const k=gal.sel.indexOf(f);if(k>=0)gal.sel.splice(k,1);else if(gal.sel.length>=10){toast('Até 10 fotos de cada vez.');return}else gal.sel.push(f);return render()}return verFotoGaleria(f)}
+  if(t.dataset.galcat!==undefined){gal.cat=t.dataset.galcat;return render()}
   if(t.dataset.tam)return formTam(t.dataset.tam);
   if(t.dataset.segc){segCard=t.dataset.segc;return render()}
   if(t.dataset.goto){segIng=t.dataset.goto;location.hash='ingredientes';return}
@@ -2301,6 +2418,9 @@ document.addEventListener('click',e=>{
   if(t.dataset.filtro){filtroPed=t.dataset.filtro;return render()}
   const a=t.dataset.act;
   if(a==='fechar')return closeSheet(+t.dataset.layer||1);
+  if(a==='galSel'){gal.sel=gal.sel?null:[];return render()}
+  if(a==='galEnviar'){if(gal.sel&&gal.sel.length)formEnviarFotos(gal.sel.slice());return}
+  if(a==='galPublicar'){if(gal.sel&&gal.sel.length){const it=galItem(gal.sel[0]);criarPost(null,{fotos:gal.sel.slice(),p:{descricao:(it&&it.titulo)||'',cliente:''}})}return}
   if(a==='sigLimpar')return limparAssinatura();
   if(a==='sigSalvar')return salvarAssinatura();
   if(a==='colarNota')return abrirTextoNota('',false);
@@ -2315,7 +2435,7 @@ document.addEventListener('click',e=>{
   if(a==='imgCardapio')return imagemCardapio();
   if(a==='txtCardapio')return textoCardapio();
   if(a==='sair'){if(sb)sb.auth.signOut();return}
-  if(a==='backup'){const j=JSON.stringify({app:'bia-marques',versao:1,exportadoEm:new Date().toISOString(),ingredientes:S.ing,componentes:S.comp,cardapio:S.card,receitas:S.rec,pedidos:S.ped,config:{geral:S.cfg}},null,1);getDownloads().then(d=>d.save({filename:`backup-bia-marques-${isoD(new Date())}.json`,data:new Blob([j],{type:'application/json'})}));toast('Backup baixado');return}
+  if(a==='backup'){const j=JSON.stringify({app:'bia-marques',versao:1,exportadoEm:new Date().toISOString(),ingredientes:S.ing,componentes:S.comp,cardapio:S.card,galeria:S.gal,receitas:S.rec,pedidos:S.ped,config:{geral:S.cfg}},null,1);getDownloads().then(d=>d.save({filename:`backup-bia-marques-${isoD(new Date())}.json`,data:new Blob([j],{type:'application/json'})}));toast('Backup baixado');return}
   if(a==='backupTexto'){const j=JSON.stringify({ingredientes:S.ing,massasRecheiosCoberturas:S.comp,cardapio:S.card,receitas:S.rec,pedidos:S.ped,ajustes:S.cfg});try{navigator.clipboard.writeText(j).then(()=>toast('Backup copiado. Cole numa nota para guardar.'),()=>toast('Não consegui copiar neste aparelho.'))}catch(err){toast('Não consegui copiar neste aparelho.')}}
 });
 document.addEventListener('submit',e=>{
@@ -2323,18 +2443,19 @@ document.addEventListener('submit',e=>{
   saveCfg({linkAvaliar:f.linkAvaliar.value.trim(),nome:f.nome.value.trim(),valorHora:num(f.valorHora.value),margemPct:num(f.margemPct.value),indiretosPct:num(f.indiretosPct.value),sinalPct:num(f.sinalPct.value),horasKg:num(f.horasKg.value),embalagemPadrao:num(f.embalagemPadrao.value),whatsapp:f.whatsapp.value.trim(),instagram:f.instagram.value.trim(),email:f.email.value.trim(),site:f.site.value.trim(),pix:f.pix.value.trim(),pixTipo:f.pixTipo.value,pixNome:f.pixNome.value.trim(),pixCidade:f.pixCidade.value.trim(),linkPagamento:f.linkPagamento.value.trim(),avaliacoes:f.avaliacoes.value.trim(),endereco:f.endereco.value.trim(),horarioSem:f.horarioSem.value.trim(),horarioDom:f.horarioDom.value.trim(),prazoTopo:num(f.prazoTopo.value),prazoSem:num(f.prazoSem.value),pagamento:f.pagamento.value.trim(),decoracaoTxt:f.decoracaoTxt.value.trim(),infos:f.infos.value.split('\n').map(x=>x.trim()).filter(Boolean).join('\n')});toast('Ajustes salvos');
 });
 document.addEventListener('input',e=>{if(e.target.id==='buscaIng'){buscaIng=e.target.value;const pos=e.target.selectionStart;render();const n=$('#buscaIng');if(n){n.focus();try{n.setSelectionRange(pos,pos)}catch(_){}}}});
-document.addEventListener('change',e=>{if(e.target.id==='notaFile'){const fs=Array.from(e.target.files||[]);e.target.value='';lerFotos(fs)}
+document.addEventListener('change',e=>{if(e.target.id==='galFile'){const fs=Array.from(e.target.files||[]);e.target.value='';galUpload(fs)}
+  if(e.target.id==='notaFile'){const fs=Array.from(e.target.files||[]);e.target.value='';lerFotos(fs)}
   if(e.target.id==='rsFile'){const f=e.target.files&&e.target.files[0];e.target.value='';if(f)restaurarBackup(f)}});
 async function restaurarBackup(file){
   let j;try{j=JSON.parse(await file.text())}catch(er){toast('Esse arquivo não é um backup do app.');return}
-  const m={ingredientes:j.ingredientes||{},componentes:j.componentes||j.massasRecheiosCoberturas||{},cardapio:j.cardapio||{},receitas:j.receitas||{},pedidos:j.pedidos||{},config:j.config||(j.ajustes?{geral:j.ajustes}:{})};
+  const m={ingredientes:j.ingredientes||{},componentes:j.componentes||j.massasRecheiosCoberturas||{},cardapio:j.cardapio||{},galeria:j.galeria||{},receitas:j.receitas||{},pedidos:j.pedidos||{},config:j.config||(j.ajustes?{geral:j.ajustes}:{})};
   const n=Object.keys(m.pedidos).length,ni=Object.keys(m.ingredientes).length,nc=Object.keys(m.componentes).length;
   if(!n&&!ni&&!nc&&!Object.keys(m.cardapio).length){toast('Esse backup está vazio.');return}
   const sh=openSheet('Restaurar backup',`<div class="stack"><p style="margin:0">Este backup tem <b>${n} pedidos</b>, <b>${ni} ingredientes</b>, <b>${nc} massas, recheios, coberturas, tamanhos e toppers</b>, ${Object.keys(m.cardapio).length} bolos no cardápio e ${Object.keys(m.receitas).length} receitas.</p><p class="muted" style="margin:0">O que tiver o mesmo item no app será trocado pelo do backup. O resto fica como está.</p><button class="btn primary" type="button" data-ok>Restaurar</button></div>`);
   sh.querySelector('[data-ok]').addEventListener('click',async ev=>{ev.target.disabled=true;ev.target.textContent='Restaurando…';
     try{
       if(S.db&&S.db.importar)await S.db.importar(m);
-      else{const k={ingredientes:'ing',componentes:'comp',cardapio:'card',receitas:'rec',pedidos:'ped'};Object.entries(k).forEach(([c,kk])=>{S[kk]={...S[kk],...m[c]}});if(m.config.geral)S.cfg={...DEFAULT_CFG,...m.config.geral};saveLocal();render()}
+      else{const k={ingredientes:'ing',componentes:'comp',cardapio:'card',galeria:'gal',receitas:'rec',pedidos:'ped'};Object.entries(k).forEach(([c,kk])=>{S[kk]={...S[kk],...m[c]}});if(m.config.geral)S.cfg={...DEFAULT_CFG,...m.config.geral};saveLocal();render()}
       closeSheet();toast('Backup restaurado');
     }catch(er){ev.target.disabled=false;ev.target.textContent='Restaurar';toast('Não consegui restaurar. Confira a internet e tente de novo.')}});
 }

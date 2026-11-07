@@ -74,3 +74,12 @@ Sirva a pasta com qualquer servidor estático (ex.: `npx serve .`). Para trazer 
 - `criarPost`: escolhe as fotos (ordem do carrossel), formato (`FMT_POST`: Feed 4:5, Quadrado, Stories) e estilo (`ESTILO_POST`: faixa com texto, logo no canto, moldura rosa, só a foto), texto na foto e legenda (`legendaPost`: tema, tamanho e sabores, WhatsApp, cidade, hashtags; sem o nome do cliente). `desenharPost` desenha em canvas com a logo.
 - Instagram não aceita publicação por app de fora sem a API oficial: "Publicar no Instagram" copia a legenda e abre o Compartilhar do celular com as imagens (Web Share); sem suporte, salva as fotos e abre o instagram.com. Grava `postEm`.
 - Legenda (`legendaPost(p, dados, variação)`) no jeito dos posts dela: emojis do tema (`EMOJI_TEMA`, `emojisTema`), frase carinhosa, "para comemorar os 4 aninhos do Théo" e hashtags em CamelCase (#BoloPersonalizado #Tema #FestaInfantil/#BoloInfantil #ConfeitariaComAmor #Nome4Anos). Sem sabor, WhatsApp nem endereço. `dadosPost` tenta tirar tema, nome e idade dos "Detalhes e tema" do pedido; no post há campos Tema, Aniversariante, Idade e do/da que refazem a legenda (se ela não foi editada à mão) e o botão "Outra legenda" (4 modelos).
+
+## Galeria
+
+- Aba "Galeria" (`vGaleria`, sexta aba da barra). Coleção `galeria` (`S.gal`): `{foto, titulo, categoria, criado}` para fotos adicionadas ali (`galUpload`, bucket `bia-fotos`) e `{foto, oculta:true}` para tirar da galeria uma foto de pedido ou do cardápio sem apagar o arquivo.
+- `itensGaleria()` junta, sem repetir, as fotos da galeria, do cardápio (`S.card[].fotos`) e dos pedidos (`S.ped[].fotos`), mais novas primeiro. Filtro por categoria (`gal.cat`).
+- Tocar na foto (`verFotoGaleria`): nome/tema e categoria (gravados num registro da galeria), "Enviar para alguém" (`formEnviarFotos`: logo no canto opcional, mensagem, Compartilhar com as imagens), "Publicar no Instagram" (`criarPost(null, {fotos, p})`), "Salvar no celular", "Colocar no cardápio" / "Ver no cardápio" e "Excluir foto" / "Tirar da galeria".
+- "Selecionar" (`gal.sel`, até 10): enviar ou publicar várias de uma vez (carrossel).
+- `desenharPost` tem o formato `'original'` (proporção da foto, até 1800 px) usado no envio; a logo do estilo "logo" escala com a foto.
+- Arquivos só são apagados do bucket quando a foto não está mais em pedido, cardápio nem galeria (`fotoNaGaleriaOuPedido`).
