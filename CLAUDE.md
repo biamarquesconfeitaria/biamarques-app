@@ -87,3 +87,24 @@ Sirva a pasta com qualquer servidor estático (ex.: `npx serve .`). Para trazer 
 ## Cardápio em PDF
 
 - Cardápio → "Enviar cardápio em PDF" (`enviarCardapioPDF` → `pdfCardapio`). `desenharCardapio(pdf)` é o mesmo desenho da imagem ("Gerar imagem"); no PDF entra o bloco "Faça seu pedido" com links clicáveis (jsPDF `doc.link`): botão verde "Fazer meu pedido no WhatsApp" (wa.me com mensagem pronta), Instagram, avaliações (`cfg.avaliacoes`) e rota até a retirada (Google Maps). Enviar abre o Compartilhar com o PDF e a mensagem; sem isso, salva o PDF e copia a mensagem.
+
+## Barra de abas e "Mais"
+
+- Barra: Início, Pedidos, Agenda, Cardápio, Galeria e "Mais" (`data-act="mais"`, `abrirMais`). `NAV_MAIS`: Financeiro, Impostos, Receitas, Ingredientes, Ajustes. Quando a tela atual é do "Mais", o botão mostra o nome dela (em `render()`).
+
+## Agenda
+
+- `vAgenda`: calendário do mês (`ag.ano/mes/dia`) com os pedidos pela data de retirada. Dia com pedido fica rosa; com `capDia()` ou mais bolos (Ajustes → "Bolos por dia", `cfg.capacidadeDia`, padrão 3) fica "cheio". Orçamento sem resposta aparece como bolinha vazada e não conta para "cheio". Tocar no dia mostra os pedidos e "+ Pedido" (abre o pedido com a data). `avisosPedido` avisa "Agenda cheia nesse dia". Sem Google Agenda (pedido do usuário).
+
+## Financeiro
+
+- Coleção `lancamentos` (`S.lan`): `{tipo 'e'|'s'|'r' (retirada/pró-labore), valor, data, desc, cat, forma, fotos[], parcela 'i/N', grupo}`. Despesa no cartão de crédito com parcelas vira uma parcela por mês (mesmo `grupo`). Fotos do comprovante no bucket `bia-fotos`.
+- `movimentos()` junta, sem precisar lançar de novo: lançamentos, pagamentos registrados nos pedidos (entrada, `src:'ped'`), notas de compra lidas (coleção `compras`, `S.compr`, saída em ingredientes/embalagens) e guias DAS pagas (`cfg.fiscal.das`). Categorias em `FIN_CATS`.
+- Tela por mês: entrou, despesas, sobrou; retiradas; a receber dos pedidos; "Para onde foi o dinheiro" (por categoria); lista por dia com filtro; "Planilha" (CSV com `;` e BOM).
+
+## Impostos (MEI)
+
+- Dados em `cfg.fiscal` (`fiscal()`, `salvarFiscal`): `cnpj`, `consulta` (BrasilAPI, reserva minhareceita.org: razão social, situação, abertura, MEI/Simples, CNAE, endereço), `inicio` (abertura), `desde` (mês em que começou a controlar; meses anteriores ficam sem status), `ativ` (`MEI_ATIV`), `das` ({'AAAA-MM': {st:'pago', valor, data}}), `dasn` ({ano: {st:'entregue', data}}).
+- Guia DAS = 5% do salário mínimo (`SAL_MIN`, atualizar todo janeiro) + ICMS/ISS; vence dia 20 do mês seguinte (`venceDAS`). "Paguei" grava e entra no Financeiro.
+- Faturamento do ano (entradas do Financeiro) contra o limite do MEI (`LIMITE_MEI` = 81 mil); declaração anual DASN-SIMEI (até 31/05) com o faturamento do ano anterior; `LINKS_FISCAIS` (PGMEI, DASN, cartão CNPJ, e-CAC, Simples, Regularize, gov.br) copiam o CNPJ ao abrir. Débitos não vêm da consulta (PGMEI/e-CAC pedem login/captcha).
+- `avisosFiscais()` no Início: guia vencida ou vencendo em 7 dias; declaração anual pendente de janeiro a maio.

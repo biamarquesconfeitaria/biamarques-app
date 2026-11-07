@@ -182,6 +182,24 @@ details summary{list-style-position:inside}
 .sigbox{position:relative;background:#fff;border:1.5px dashed var(--brand);border-radius:14px;overflow:hidden;touch-action:none}
 .sigbox canvas{display:block;width:100%;height:auto;touch-action:none;cursor:crosshair}
 .sigbox img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#fff;pointer-events:none}
+.agnav{display:flex;align-items:center;justify-content:space-between;margin:0 0 12px}
+.agnav b{font-size:1.1rem}
+.agnav .btn{min-width:44px;font-size:1.4rem}
+.agcal{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:8px}
+.agw,.agg{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.agw span{text-align:center;font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;padding:4px 0}
+.agd{min-height:58px;border:1px solid transparent;border-radius:10px;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:2px;padding:5px 2px;cursor:pointer;position:relative;color:var(--ink);font:inherit}
+.agd .dn{font-weight:700;font-size:.92rem}
+.agd .dq{font-size:.62rem;font-weight:700;line-height:1.1;padding:2px 4px;border-radius:6px;background:var(--soft);color:var(--accent)}
+.agd.cheio .dq{background:var(--warn);color:#fff}
+.agd.tem{background:var(--pink)}
+.agd.cheio{background:#FBE3D3}
+.agd.pass{opacity:.55}
+.agd.hj{border-color:var(--accent)}
+.agd.sel{outline:3px solid var(--accent);outline-offset:-1px}
+.agd .dorc{position:absolute;top:5px;right:5px;width:7px;height:7px;border-radius:50%;border:1.5px solid var(--accent)}
+.lg{display:inline-block;width:11px;height:11px;border-radius:3px;vertical-align:-1px}
+.lg.tem{background:var(--pink);border:1px solid var(--line)}.lg.cheio{background:var(--warn)}.lg.orc{border:1.5px solid var(--accent);border-radius:50%}
 .ggrid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding-bottom:90px}
 .gcell{position:relative;aspect-ratio:1;border:0;padding:0;border-radius:10px;overflow:hidden;background:var(--soft);cursor:pointer}
 .gcell img{width:100%;height:100%;object-fit:cover;display:block}
@@ -210,11 +228,10 @@ a.note{display:block;color:var(--ink);text-decoration:none}
 <div class="tabs"><nav id="tabs">
   <a href="#inicio" data-t="inicio"><svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z"/></svg>Início</a>
   <a href="#pedidos" data-t="pedidos"><svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>Pedidos</a>
+  <a href="#agenda" data-t="agenda"><svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/><path d="M8 14h2M12 14h2M16 14h0M8 17h2M12 17h2"/></svg>Agenda</a>
   <a href="#cardapio" data-t="cardapio"><svg viewBox="0 0 24 24"><path d="M4 20h16M5 20v-6h14v6M7 14v-3h10v3M12 11V8"/><path d="M12 8c-1.2-1-1.2-2.6 0-4 1.2 1.4 1.2 3 0 4z"/></svg>Cardápio</a>
   <a href="#galeria" data-t="galeria"><svg viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="2"/><circle cx="9" cy="10" r="1.8"/><path d="M4 17l5-4.5 3.5 3 3-2.5 4.5 4"/></svg>Galeria</a>
-  <a href="#receitas" data-t="receitas"><svg viewBox="0 0 24 24"><path d="M6 3h11a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M8 3v18M11 8h4M11 12h4"/></svg>Receitas</a>
-  <a href="#ingredientes" data-t="ingredientes"><svg viewBox="0 0 24 24"><path d="M8 3h8v3H8zM7 6h10l1 3v10a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V9z"/><path d="M6 12h12"/></svg>Ingredientes</a>
-
+  <a href="#mais" data-t="mais" data-act="mais"><svg viewBox="0 0 24 24"><circle cx="5.5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="18.5" cy="12" r="1.6"/></svg><span>Mais</span></a>
 </nav></div>
 
 <div id="sheetRoot"></div>
@@ -254,16 +271,16 @@ const DEFAULT_CFG={nome:'Bia Marques Confeitaria',valorHora:25,indiretosPct:10,m
   pagamento:'Pix, transferência, cartão de débito, crédito e link de pagamento (parcelamos até 5x com juros da máquina)',
   decoracaoTxt:'Decoração com glitter, pintura, desenho e escrita flork: valor a consultar, pois depende do tamanho do bolo.',
   infos:['Você pode escolher duas opções de recheio e uma opção de massa.','O pedido só é feito mediante um pagamento de 50% do valor. Caso seja via cartão, enviamos o link de pagamento.','Aceitamos transferências, Pix, cartão de débito, crédito e link de pagamento (parcelamos até 5x com juros da máquina).','Os valores apresentados são iniciais, com recheios e sem topo de bolo. Recheios especiais e tipos de decoração alteram o valor.','Não fazemos entrega. O local de retirada é na Rua Amapá 227, Araras.','Você pode optar por entrega via motorista de aplicativo, porém precisa pedir no seu aplicativo e o transporte é de responsabilidade do cliente.','Não trabalhamos com pronta entrega: pedidos com topo de bolo pedimos 3 dias e pedidos sem topo de bolo pedimos 2 dias.','Horário de retirada: de segunda a sábado das 9h às 18h e domingo das 9h às 12h. Lembrando que é preciso retirar no horário combinado.'].join('\n')};
-const COLS={ing:'ingredientes',rec:'receitas',ped:'pedidos',comp:'componentes',card:'cardapio',gal:'galeria'};
-const S={mode:'carregando',loaded:false,note:'',ing:{},rec:{},ped:{},comp:{},card:{},gal:{},cfg:{...DEFAULT_CFG},db:null};
+const COLS={ing:'ingredientes',rec:'receitas',ped:'pedidos',comp:'componentes',card:'cardapio',gal:'galeria',lan:'lancamentos',compr:'compras'};
+const S={mode:'carregando',loaded:false,note:'',ing:{},rec:{},ped:{},comp:{},card:{},gal:{},lan:{},compr:{},cfg:{...DEFAULT_CFG},db:null};
 const LKEY='bia-marques-v1';
 let sb=null,recuperando=false,usuarioEmail='';
 const NUVEM=window.BIA_CONFIG||{};
 const temNuvem=()=>!!(NUVEM.supabaseUrl&&NUVEM.supabaseKey);
 const T_DOCS='bia_docs',BUCKET='bia-fotos';
 
-function loadLocal(){try{const j=JSON.parse(localStorage.getItem(LKEY)||'null');if(j){S.ing=j.ing||{};S.rec=j.rec||{};S.ped=j.ped||{};S.comp=j.comp||{};S.card=j.card||{};S.gal=j.gal||{};S.cfg={...DEFAULT_CFG,...(j.cfg||{})}}}catch(e){}S.loaded=true}
-function saveLocal(){try{localStorage.setItem(LKEY,JSON.stringify({ing:S.ing,rec:S.rec,ped:S.ped,comp:S.comp,card:S.card,gal:S.gal,cfg:S.cfg}))}catch(e){toast('Não consegui salvar neste aparelho.')}}
+function loadLocal(){try{const j=JSON.parse(localStorage.getItem(LKEY)||'null');if(j){S.ing=j.ing||{};S.rec=j.rec||{};S.ped=j.ped||{};S.comp=j.comp||{};S.card=j.card||{};S.gal=j.gal||{};S.lan=j.lan||{};S.cfg={...DEFAULT_CFG,...(j.cfg||{})}}}catch(e){}S.loaded=true}
+function saveLocal(){try{localStorage.setItem(LKEY,JSON.stringify({ing:S.ing,rec:S.rec,ped:S.ped,comp:S.comp,card:S.card,gal:S.gal,lan:S.lan,cfg:S.cfg}))}catch(e){toast('Não consegui salvar neste aparelho.')}}
 
 async function initStore(){
   if(!temNuvem()){S.mode='local';loadLocal();render();return}
@@ -419,17 +436,19 @@ const saldo=p=>Math.max(0,num(p.valor)-num(p.sinal));
 const pedidosOrdenados=()=>Object.entries(S.ped).map(([id,p])=>({id,...p})).sort((a,b)=>(a.entrega||'9999').localeCompare(b.entrega||'9999')||(a.hora||'').localeCompare(b.hora||''));
 
 /* ---------- navegação ---------- */
-const TABS=['inicio','pedidos','cardapio','galeria','receitas','ingredientes','ajustes'];
+const TABS=['inicio','pedidos','agenda','cardapio','galeria','financeiro','impostos','receitas','ingredientes','ajustes'];
 let filtroPed='proximos',buscaIng='',segIng='ing';
 const cur=()=>{const h=location.hash.replace('#','');return TABS.includes(h)?h:'inicio'};
 window.addEventListener('hashchange',()=>{closeSheet(2);closeSheet(1);render();window.scrollTo(0,0)});
 
 function render(){
   const t=cur();
-  document.querySelectorAll('#tabs a').forEach(a=>a.setAttribute('aria-current',a.dataset.t===t?'page':'false'));
+  const naMais=NAV_MAIS.find(x=>x[0]===t);
+  document.querySelectorAll('#tabs a').forEach(a=>a.setAttribute('aria-current',(a.dataset.t===t||(a.dataset.t==='mais'&&naMais))?'page':'false'));
+  const mb=document.querySelector('#tabs [data-t="mais"] span');if(mb)mb.textContent=naMais?naMais[1]:'Mais';
   if(S.mode==='carregando')return;
   const v=$('#view');
-  const views={inicio:vInicio,pedidos:vPedidos,cardapio:vCardapio,galeria:vGaleria,receitas:vReceitas,ingredientes:vIngredientes,ajustes:vAjustes};
+  const views={inicio:vInicio,pedidos:vPedidos,agenda:vAgenda,financeiro:vFinanceiro,impostos:vImpostos,cardapio:vCardapio,galeria:vGaleria,receitas:vReceitas,ingredientes:vIngredientes,ajustes:vAjustes};
   v.innerHTML=(S.note?`<div class="note warn" style="margin-top:8px">${esc(S.note)}</div>`:'')+views[t]();
   if(t==='ajustes')ligarAssinatura();
 }
@@ -473,6 +492,7 @@ function vInicio(){
   ${orc?`<div class="note" style="margin-top:12px">${orc} orçamento${orc>1?'s':''} esperando resposta do cliente.</div>`:''}
   ${S.mode==='nuvem'&&!Object.keys(S.ing).length&&!Object.keys(S.comp).length&&!Object.keys(S.ped).length?'<a class="note warn" href="#ajustes" style="margin-top:12px"><b>Seu app está vazio.</b> Toque aqui e use “Restaurar backup” para trazer os dados.</a>':''}
   ${alertaPrecos()}
+  ${avisosFiscais()}
   <div class="section"><div class="row between"><h2>Próximas retiradas</h2><a class="btn ghost" href="#pedidos">Ver todos</a></div>${lista}</div>
   ${Object.keys(S.ing).length===0?`<div class="section"><div class="empty"><strong>Comece pelos ingredientes</strong>Cadastre o preço do que você compra. Assim o app calcula quanto custa cada bolo.<div style="margin-top:12px"><a class="btn primary" href="#ingredientes">Cadastrar ingredientes</a></div></div></div>`:''}
   <button class="btn primary fab" data-act="novoPed">+ Novo pedido</button>`;
@@ -553,6 +573,7 @@ function vAjustes(){
       <div class="field"><label for="cHs">Horário seg. a sáb.</label><input id="cHs" name="horarioSem" value="${esc(c.horarioSem)}" placeholder="9h às 18h"></div>
       <div class="field"><label for="cHd">Horário domingo</label><input id="cHd" name="horarioDom" value="${esc(c.horarioDom)}" placeholder="9h às 12h"></div>
       <div class="field"><label for="cPt">Prazo com topo</label><input id="cPt" name="prazoTopo" inputmode="numeric" value="${inVal(c.prazoTopo)}"><small>dias de antecedência</small></div>
+      <div class="field"><label for="cCap">Bolos por dia</label><input id="cCap" name="capacidadeDia" inputmode="numeric" value="${inVal(c.capacidadeDia||3)}"><small>a Agenda avisa quando o dia fica cheio</small></div>
       <div class="field"><label for="cPs">Prazo sem topo</label><input id="cPs" name="prazoSem" inputmode="numeric" value="${inVal(c.prazoSem)}"><small>dias de antecedência</small></div>
     </div>
     <div class="field"><label for="cPag">Formas de pagamento</label><textarea id="cPag" name="pagamento">${esc(c.pagamento)}</textarea></div>
@@ -775,6 +796,7 @@ function avisosPedido(d){
     if(k>=0&&k<min)out.push(`Prazo curto: pedidos ${d.topper?'com':'sem'} topo de bolo pedem ${fmt(min)} dias de antecedência.`);
     if(k<0)out.push('Essa data já passou.');
   }
+  if(d.entrega&&ATIVO(d.status)){const outros=Object.entries(S.ped).filter(([pid,x])=>x.entrega===d.entrega&&x.status!=='cancelado'&&x.status!=='orcamento'&&x!==d&&pid!==d._id).length;if(outros>=capDia())out.push(`Agenda cheia nesse dia: já tem ${outros} bolo${outros>1?'s':''} (limite ${capDia()}).`)}
   if(d.hora&&d.entrega){const dt=parseD(d.entrega);if(dt){const dom=dt.getDay()===0;const fx=parseFaixa(dom?S.cfg.horarioDom:S.cfg.horarioSem);if(fx&&(d.hora<fx[0]||d.hora>fx[1]))out.push(`Fora do horário de retirada (${dom?'domingo':'segunda a sábado'}: ${dom?S.cfg.horarioDom:S.cfg.horarioSem}).`)}}
   return out;
 }
@@ -888,7 +910,7 @@ function formPed(id,prefill){
         +`<div class="big"><span>Lucro</span><b class="${lucro<0?'up':''}" style="${lucro<0?'':'color:var(--good)'}">${brl(lucro)}</b></div><small class="muted">${lucro<0?'Esse valor não paga os custos e a sua hora.':`${fmt(pct,0)}% do valor, já pagando a sua hora.`}</small>`
         +(c.semCusto.length?`<small class="up">Sem custo cadastrado: ${esc(c.semCusto.join(', '))}. Cadastre em Ingredientes para o lucro ficar certo.</small>`:'');
     }
-    const av=avisosPedido(d);sh.querySelector('[data-avisos]').innerHTML=av.length?`<div class="note warn">${av.map(esc).join('<br>')}</div>`:'';
+    const av=avisosPedido({...d,_id:id});sh.querySelector('[data-avisos]').innerHTML=av.length?`<div class="note warn">${av.map(esc).join('<br>')}</div>`:'';
   };
   drawPills();upd();
   f.addEventListener('input',e=>{if(e.target.name==='valor')autoValor=false;if(e.target.name==='adicEspecial')autoAdic=false;upd()});
@@ -1491,6 +1513,224 @@ function verFotoGaleria(foto){
       else{for(const [gid] of gs)await remove('gal',gid);const a=await getAssets();if(a)a.delete(foto).catch(()=>{});toast('Foto excluída')}
       closeSheet()});
   });
+}
+
+/* ---------- menu "Mais" ---------- */
+const NAV_MAIS=[['financeiro','Financeiro','💰'],['impostos','Impostos','🧾'],['receitas','Receitas','📖'],['ingredientes','Ingredientes','🧁'],['ajustes','Ajustes','⚙️']];
+function abrirMais(){
+  const t=cur();
+  const sh=openSheet('Mais',`<div class="list">${NAV_MAIS.map(([k,n,ic])=>`<a class="item" href="#${k}" data-maisir style="${k===t?'border-color:var(--accent)':''}"><div class="main"><div class="t">${ic} ${n}</div></div><div class="end">›</div></a>`).join('')}</div>`);
+  sh.addEventListener('click',e=>{if(e.target.closest('[data-maisir]'))closeSheet()});
+}
+
+/* ---------- agenda ---------- */
+const ag={ano:0,mes:0,dia:''};
+const capDia=()=>Math.max(1,num(S.cfg.capacidadeDia)||3);
+const pedidosDoDia=iso=>Object.entries(S.ped).map(([id,p])=>({id,...p})).filter(p=>p.entrega===iso&&p.status!=='cancelado').sort((a,b)=>(a.hora||'99').localeCompare(b.hora||'99'));
+const contaDia=iso=>pedidosDoDia(iso).filter(p=>p.status!=='orcamento').length;
+function vAgenda(){
+  const t=today();if(!ag.ano){ag.ano=t.getFullYear();ag.mes=t.getMonth();ag.dia=isoD(t)}
+  const prim=new Date(ag.ano,ag.mes,1),dias=new Date(ag.ano,ag.mes+1,0).getDate(),off=prim.getDay(),cap=capDia(),hoje=isoD(t);
+  const mesIso=`${ag.ano}-${pad(ag.mes+1)}`;
+  const doMes=Object.values(S.ped).filter(p=>(p.entrega||'').startsWith(mesIso)&&p.status!=='cancelado');
+  const conf=doMes.filter(p=>p.status!=='orcamento');
+  const cheios=[...new Set(conf.map(p=>p.entrega))].filter(d=>contaDia(d)>=cap).length;
+  let cells='';for(let i=0;i<off;i++)cells+='<div></div>';
+  for(let d=1;d<=dias;d++){const iso=`${mesIso}-${pad(d)}`;const ps=pedidosDoDia(iso),n=ps.filter(p=>p.status!=='orcamento').length,no=ps.length-n;
+    const cls=['agd',iso===hoje?'hj':'',iso===ag.dia?'sel':'',n>=cap?'cheio':n?'tem':'',iso<hoje?'pass':''].filter(Boolean).join(' ');
+    cells+=`<button class="${cls}" data-agdia="${iso}" aria-label="${d} de ${MES[ag.mes]}: ${n} bolo${n===1?'':'s'}${no?`, ${no} orçamento${no>1?'s':''}`:''}"><span class="dn">${d}</span>${n?`<span class="dq">${n>=cap?'cheio':n+' bolo'+(n>1?'s':'')}</span>`:''}${no?'<span class="dorc"></span>':''}</button>`}
+  const sel=ag.dia&&ag.dia.startsWith(mesIso)?ag.dia:'';const lista=sel?pedidosDoDia(sel):[];const nSel=sel?contaDia(sel):0;
+  return`<header class="top"><div><div class="eyebrow">Seus pedidos no calendário</div><h1>Agenda</h1></div></header>
+  <div class="agnav"><button class="btn ghost" data-agmes="-1" aria-label="Mês anterior">‹</button><b>${MES[ag.mes].charAt(0).toUpperCase()+MES[ag.mes].slice(1)} ${ag.ano}</b><button class="btn ghost" data-agmes="1" aria-label="Próximo mês">›</button></div>
+  <div class="stats" style="margin-bottom:12px"><div class="stat"><b class="num">${conf.length}</b><span>bolos no mês</span></div><div class="stat"><b>${brl(conf.reduce((s,p)=>s+num(p.valor),0))}</b><span>em pedidos</span></div><div class="stat"><b class="num${cheios?' up':''}">${cheios}</b><span>dia${cheios===1?'':'s'} cheio${cheios===1?'':'s'} (${cap}+ bolos)</span></div></div>
+  <div class="agcal"><div class="agw">${WD.map(w=>`<span>${w}</span>`).join('')}</div><div class="agg">${cells}</div></div>
+  <p class="muted" style="font-size:.8rem;margin:8px 0 0"><span class="lg tem"></span> com pedido · <span class="lg cheio"></span> agenda cheia · <span class="lg orc"></span> orçamento esperando resposta</p>
+  ${sel?`<div class="section"><div class="row between"><h2>${esc(diaLongo(sel))}</h2><button class="btn ghost" data-agnovo="${sel}">+ Pedido</button></div>
+    ${nSel>=capDia()?`<div class="note warn" style="margin-bottom:10px"><b>Agenda cheia</b>: ${nSel} bolo${nSel>1?'s':''} neste dia (limite ${capDia()}, em Ajustes).</div>`:''}
+    ${lista.length?`<div class="list">${lista.map(pedidoItem).join('')}</div>`:'<div class="empty"><strong>Dia livre</strong>Nenhum pedido para este dia.</div>'}</div>`:''}
+  <button class="btn primary fab" data-act="novoPed">+ Novo pedido</button>`;
+}
+
+/* ---------- financeiro ---------- */
+const FIN_CATS={venda:['Venda de bolos','e'],outras_e:['Outras entradas','e'],ingredientes:['Ingredientes','s'],embalagens:['Embalagens','s'],contas:['Gás, luz e água','s'],equipamentos:['Equipamentos e utensílios','s'],transporte:['Transporte e entregas','s'],marketing:['Divulgação','s'],cartao:['Fatura do cartão','s'],impostos:['Impostos (DAS)','s'],prolabore:['Retirada / pró-labore','r'],outras_s:['Outras despesas','s']};
+const FORMAS_FIN={pix:'Pix',dinheiro:'Dinheiro',debito:'Débito',credito:'Cartão de crédito',transferencia:'Transferência',boleto:'Boleto'};
+const fin={ano:0,mes:0,filtro:'tudo'};
+const fiscal=()=>({regime:'mei',ativ:'com',das:{},dasn:{},...(S.cfg.fiscal||{})});
+// junta tudo que entrou e saiu: lançamentos, pagamentos dos pedidos, notas de compra e guias DAS pagas
+function movimentos(){
+  const out=[];
+  Object.entries(S.lan||{}).forEach(([id,l])=>out.push({src:'lan',id,tipo:l.tipo,valor:num(l.valor),data:l.data||'',desc:l.desc||FIN_CATS[l.cat]?.[0]||'',cat:l.cat,forma:l.forma,fotos:l.fotos||[],parcela:l.parcela}));
+  Object.entries(S.ped).forEach(([pid,p])=>pagamentosDe(p).forEach(g=>{if(!num(g.valor))return;out.push({src:'ped',id:pid,tipo:'e',valor:num(g.valor),data:g.data||(p.criado||'').slice(0,10)||p.entrega||'',desc:`${g.antigo?'Sinal':TIPOS_PG[g.tipo]||'Pagamento'} · ${p.cliente||'cliente'}`,cat:'venda',forma:g.forma==='credito'?'credito':g.forma})}));
+  Object.entries(S.compr||{}).forEach(([id,c])=>{const v=num(c.total)||(c.itens||[]).reduce((s,i)=>s+num(i.preco)*(num(i.pacotes)||1),0);if(!v)return;
+    const emb=(c.itens||[]).length&&(c.itens||[]).every(i=>i.cat==='embalagem');out.push({src:'compra',id,tipo:'s',valor:Math.round(v*100)/100,data:c.data||'',desc:`Nota de compra${c.loja?' · '+c.loja:''}`,cat:emb?'embalagens':'ingredientes',forma:''})});
+  Object.entries(fiscal().das||{}).forEach(([comp,d])=>{if(d&&d.st==='pago'&&num(d.valor))out.push({src:'das',id:comp,tipo:'s',valor:num(d.valor),data:d.data||'',desc:`Guia DAS de ${MES[+comp.slice(5,7)-1]}/${comp.slice(0,4)}`,cat:'impostos',forma:''})});
+  return out.sort((a,b)=>b.data.localeCompare(a.data));
+}
+const diaFin=iso=>{const d=parseD(iso);if(!d)return iso;const k=dayDiff(iso);return(k===0?'Hoje · ':k===-1?'Ontem · ':'')+`${WDL[d.getDay()]}, ${pad(d.getDate())}/${pad(d.getMonth()+1)}`};
+const ehSaida=m=>m.tipo==='s'||m.tipo==='r';
+function vFinanceiro(){
+  const t=today();if(!fin.ano){fin.ano=t.getFullYear();fin.mes=t.getMonth()}
+  const mesIso=`${fin.ano}-${pad(fin.mes+1)}`;
+  const ms=movimentos().filter(m=>m.data.startsWith(mesIso));
+  const ent=ms.filter(m=>m.tipo==='e').reduce((s,m)=>s+m.valor,0),des=ms.filter(m=>m.tipo==='s').reduce((s,m)=>s+m.valor,0),ret=ms.filter(m=>m.tipo==='r').reduce((s,m)=>s+m.valor,0);
+  const saldoM=ent-des-ret;
+  const porCat={};ms.filter(ehSaida).forEach(m=>{porCat[m.cat]=(porCat[m.cat]||0)+m.valor});const cats=Object.entries(porCat).sort((a,b)=>b[1]-a[1]);const maxC=cats.length?cats[0][1]:1;
+  const vis=ms.filter(m=>fin.filtro==='tudo'||(fin.filtro==='e'?m.tipo==='e':ehSaida(m)));
+  const grupos={};vis.forEach(m=>{(grupos[m.data]=grupos[m.data]||[]).push(m)});
+  const receber=Object.values(S.ped).filter(p=>ATIVO(p.status)&&p.status!=='orcamento').reduce((s,p)=>s+saldo(p),0);
+  return`<header class="top"><div><div class="eyebrow">Entradas e saídas</div><h1>Financeiro</h1></div></header>
+  <div class="agnav"><button class="btn ghost" data-finmes="-1" aria-label="Mês anterior">‹</button><b>${MES[fin.mes].charAt(0).toUpperCase()+MES[fin.mes].slice(1)} ${fin.ano}</b><button class="btn ghost" data-finmes="1" aria-label="Próximo mês">›</button></div>
+  <div class="stats"><div class="stat"><b class="down">${brl(ent)}</b><span>entrou</span></div><div class="stat"><b class="up">${brl(des)}</b><span>despesas</span></div><div class="stat"><b class="${saldoM<0?'up':''}">${brl(saldoM)}</b><span>sobrou no mês</span></div></div>
+  <div class="row between muted" style="font-size:.88rem;margin:8px 0 12px;flex-wrap:wrap;gap:6px"><span>Retiradas (pró-labore): <b>${brl(ret)}</b></span><span>A receber dos pedidos: <b>${brl(receber)}</b></span></div>
+  <div class="grid3" style="margin-bottom:14px"><button class="btn" data-fin="e">+ Entrada</button><button class="btn primary" data-fin="s">+ Despesa</button><button class="btn" data-fin="r">Retirada</button></div>
+  ${cats.length?`<div class="section" style="margin-top:0"><h2>Para onde foi o dinheiro</h2><div class="stack" style="gap:8px">${cats.map(([k,v])=>`<div><div class="row between" style="font-size:.88rem"><span>${esc(FIN_CATS[k]?.[0]||'Outras')}</span><b>${brl(v)}</b></div><div class="bar" style="margin-top:3px"><i style="animation:none;width:${Math.max(3,Math.round(v/maxC*100))}%"></i></div></div>`).join('')}</div></div>`:''}
+  <div class="section"><div class="row between" style="flex-wrap:wrap;gap:8px"><h2 style="margin:0">Movimentos</h2><button class="btn ghost" data-act="finCsv" style="min-height:32px">Planilha</button></div>
+    <div class="filters" style="margin:10px 0">${[['tudo','Tudo'],['e','Entradas'],['s','Saídas']].map(([k,n])=>`<button data-finfil="${k}" aria-pressed="${fin.filtro===k}">${n}</button>`).join('')}</div>
+    ${vis.length?Object.entries(grupos).map(([d,arr])=>`<div class="dayhead">${d?esc(diaFin(d)):'Sem data'}</div><div class="list">${arr.map(m=>`<button class="item" data-mov="${m.src}:${esc(m.id)}"><div class="main"><div class="t">${esc(m.desc)}${m.fotos&&m.fotos.length?' 📎':''}</div><div class="s">${esc(FIN_CATS[m.cat]?.[0]||'')}${m.forma?' · '+esc(FORMAS_FIN[m.forma]||FORMAS_PG[m.forma]||m.forma):''}${m.src==='ped'?' · pedido':m.src==='compra'?' · nota lida':m.src==='das'?' · Impostos':''}</div></div><div class="end"><b class="${m.tipo==='e'?'down':'up'}">${m.tipo==='e'?'+':'−'} ${brl(m.valor)}</b></div></button>`).join('')}</div>`).join('')
+      :'<div class="empty"><strong>Nada neste mês</strong>Os pagamentos registrados nos pedidos entram aqui sozinhos. Lance as despesas com “+ Despesa”.</div>'}
+  </div>`;
+}
+function formLanc(id,tipo0){
+  const l=id?S.lan[id]:{tipo:tipo0||'s',valor:'',data:isoD(new Date()),desc:'',cat:tipo0==='e'?'outras_e':tipo0==='r'?'prolabore':'',forma:'pix',fotos:[]};
+  let tipo=l.tipo,forma=l.forma||'pix',fotos=(l.fotos||[]).slice(),enviando=0;
+  const catsDe=t=>Object.entries(FIN_CATS).filter(([,v])=>t==='r'?v[1]==='r':v[1]===t);
+  const sh=openSheet(id?'Lançamento':'Novo lançamento',`<form class="f">
+    <div class="pills" data-ltipo>${[['e','Entrada'],['s','Despesa'],['r','Retirada (pró-labore)']].map(([k,n])=>`<button type="button" class="pill" data-t="${k}" aria-pressed="${k===tipo}">${n}</button>`).join('')}</div>
+    <div class="grid2"><div class="field"><label for="lVal">Valor (R$)</label><input id="lVal" name="valor" inputmode="decimal" required value="${inVal(l.valor)}" placeholder="0,00"></div>
+      <div class="field"><label for="lData">Data</label><input id="lData" name="data" type="date" required value="${esc(l.data||isoD(new Date()))}"></div></div>
+    <div class="field"><label for="lDesc">Descrição</label><input id="lDesc" name="desc" value="${esc(l.desc||'')}" placeholder="Ex.: Mercado, conta de luz, gás…"></div>
+    <div class="field" data-catbox><label for="lCat">Categoria</label><select id="lCat" name="cat"></select></div>
+    <div class="field"><span class="lbl">Como pagou</span><div class="pills" data-lforma>${Object.entries(FORMAS_FIN).map(([k,n])=>`<button type="button" class="pill" data-f="${k}" aria-pressed="${k===forma}">${n}</button>`).join('')}</div></div>
+    ${id?(l.parcela?`<small class="muted">Parcela ${esc(l.parcela)} de uma compra no cartão.</small>`:''):`<div class="field" data-parc hidden><label for="lParc">Parcelas no cartão</label><input id="lParc" name="parcelas" inputmode="numeric" value="1"><small>Em 3x, o app lança uma parcela em cada mês.</small></div>`}
+    <div class="field"><span class="lbl">Comprovante ou nota (foto)</span><div class="gal" data-lfotos></div></div>
+    <div class="actions"><button class="btn primary" type="submit">Salvar</button>${id?'<button class="btn danger" type="button" data-del>Excluir lançamento</button>':''}</div>
+  </form>`);
+  const f=sh.querySelector('form');
+  const drawCats=()=>{const cs=catsDe(tipo);f.cat.innerHTML=cs.map(([k,v])=>`<option value="${k}" ${k===l.cat?'selected':''}>${v[0]}</option>`).join('');sh.querySelector('[data-catbox]').hidden=cs.length<2};
+  const drawParc=()=>{const p=sh.querySelector('[data-parc]');if(p)p.hidden=!(tipo==='s'&&forma==='credito')};
+  const drawFotos=()=>{sh.querySelector('[data-lfotos]').innerHTML=fotos.map((x,i)=>`<div class="th"><a href="${esc(blobUrl(x))}" target="_blank" rel="noopener"><img src="${esc(blobUrl(x))}" alt="Comprovante ${i+1}"></a><button type="button" data-rmlf="${i}" aria-label="Remover">×</button></div>`).join('')
+    +(enviando?'<div class="addph">Enviando…</div>':'')+(sb&&fotos.length<4?'<label class="addph" for="lFile">+ Foto</label><input class="vh" id="lFile" type="file" accept="image/*" multiple tabindex="-1">':(sb?'':'<small class="muted">Para guardar fotos, entre com a sua conta.</small>'))};
+  drawCats();drawParc();drawFotos();
+  sh.querySelector('[data-ltipo]').addEventListener('click',e=>{const b=e.target.closest('[data-t]');if(!b)return;tipo=b.dataset.t;sh.querySelectorAll('[data-t]').forEach(x=>x.setAttribute('aria-pressed',x===b));l.cat=tipo==='e'?'outras_e':tipo==='r'?'prolabore':'';drawCats();drawParc()});
+  sh.querySelector('[data-lforma]').addEventListener('click',e=>{const b=e.target.closest('[data-f]');if(!b)return;forma=b.dataset.f;sh.querySelectorAll('[data-f]').forEach(x=>x.setAttribute('aria-pressed',x===b));drawParc()});
+  sh.addEventListener('change',async e=>{if(e.target.id!=='lFile')return;const fs=Array.from(e.target.files||[]);e.target.value='';const a=await getAssets();if(!a)return;
+    for(const file of fs){if(fotos.length>=4)break;enviando++;drawFotos();try{const b=await prepImg(file,1800,.85);const r=await a.upload(b);fotos.push(r.id)}catch(er){toast('Não consegui enviar a foto.')}enviando--;drawFotos()}});
+  sh.addEventListener('click',e=>{const r=e.target.closest('[data-rmlf]');if(r){fotos.splice(+r.dataset.rmlf,1);drawFotos()}});
+  f.addEventListener('submit',async e=>{e.preventDefault();if(enviando){toast('Espere a foto terminar de enviar.');return}
+    const v=Math.round(num(f.valor.value)*100)/100;if(!(v>0)){toast('Informe o valor.');return}
+    const base={tipo,valor:v,data:f.data.value,desc:f.desc.value.trim(),cat:f.cat.value||(tipo==='r'?'prolabore':tipo==='e'?'outras_e':'outras_s'),forma,fotos,criado:(l.criado||new Date().toISOString())};
+    const np=!id&&tipo==='s'&&forma==='credito'?Math.max(1,Math.min(24,Math.round(num(f.parcelas.value))||1)):1;
+    if(np>1){const g=uid(),cada=Math.floor(v/np*100)/100;const d0=parseD(base.data);
+      for(let i=0;i<np;i++){const d=new Date(d0.getFullYear(),d0.getMonth()+i,Math.min(d0.getDate(),28));await save('lan',null,{...base,valor:i===np-1?Math.round((v-cada*(np-1))*100)/100:cada,data:isoD(d),parcela:`${i+1}/${np}`,grupo:g,fotos:i?[]:fotos})}
+      toast(`Lançado em ${np} parcelas`)}
+    else{await save('lan',id,{...(id?l:{}),...base});toast('Lançamento salvo')}
+    closeSheet()});
+  const del=sh.querySelector('[data-del]');if(del)del.addEventListener('click',()=>armDelete(del,async()=>{await remove('lan',id);closeSheet();toast('Lançamento excluído');const a=await getAssets();if(a)(l.fotos||[]).forEach(x=>a.delete(x).catch(()=>{}))}));
+}
+function abrirMov(key){
+  const i=key.indexOf(':'),src=key.slice(0,i),id=key.slice(i+1);
+  if(src==='lan')return formLanc(id);
+  if(src==='ped')return formPed(id);
+  if(src==='das'){location.hash='impostos';return}
+  if(src==='compra'){const c=(S.compr||{})[id];if(!c)return;openSheet('Nota de compra',`<div class="stack"><p style="margin:0"><b>${esc(c.loja||'Compra')}</b> · ${c.data?fmtData(c.data):''}${c.total?' · total '+brl(c.total):''}</p><div class="list">${(c.itens||[]).map(x=>`<div class="item static"><div class="main"><div class="t">${esc(x.nome||'')}</div><div class="s">${num(x.pacotes)>1?num(x.pacotes)+' × ':''}${fmt(x.qtd)} ${esc(x.unidade||'')}</div></div><div class="end"><b>${brl(num(x.preco)*(num(x.pacotes)||1))}</b></div></div>`).join('')}</div><small class="muted">Nota lida em Ingredientes → Ler nota de compra.</small></div>`)}
+}
+function finCsv(){
+  const mesIso=`${fin.ano}-${pad(fin.mes+1)}`;const ms=movimentos().filter(m=>m.data.startsWith(mesIso)).sort((a,b)=>a.data.localeCompare(b.data));
+  const q=s=>`"${String(s??'').replace(/"/g,'""')}"`;
+  const L=[['Data','Tipo','Descrição','Categoria','Forma','Valor'].join(';'),...ms.map(m=>[fmtData(m.data),m.tipo==='e'?'Entrada':m.tipo==='r'?'Retirada':'Despesa',q(m.desc),q(FIN_CATS[m.cat]?.[0]||''),q(FORMAS_FIN[m.forma]||m.forma||''),(m.tipo==='e'?'':'-')+m.valor.toFixed(2).replace('.',',')].join(';'))];
+  getDownloads().then(d=>d.save({filename:`financeiro-${mesIso}.csv`,data:new Blob(['﻿'+L.join('\n')],{type:'text/csv'})})).then(()=>toast('Planilha salva'));
+}
+
+/* ---------- impostos (MEI) ---------- */
+const SAL_MIN={2023:1302,2024:1412,2025:1518,2026:1621};
+const MEI_ATIV={com:['Comércio ou indústria (ICMS R$ 1)',0,1],serv:['Serviços (ISS R$ 5)',5,0],ambos:['Comércio e serviços (R$ 6)',5,1]};
+const LIMITE_MEI=81000;
+const LINKS_FISCAIS=[
+  ['Gerar a guia DAS (PGMEI)','Emitir a guia do mês e ver débitos em aberto','https://www8.receita.fazenda.gov.br/SimplesNacional/Aplicacoes/ATSPO/pgmei.app/Identificacao'],
+  ['Declaração anual (DASN-SIMEI)','Entregar até 31 de maio','https://www8.receita.fazenda.gov.br/SimplesNacional/Aplicacoes/ATSPO/dasnsimei.app/Identificacao'],
+  ['Comprovante do CNPJ (Receita)','Cartão CNPJ e situação cadastral','https://solucoes.receita.fazenda.gov.br/servicos/cnpjreva/cnpjreva_solicitacao.asp'],
+  ['e-CAC da Receita','Pendências, mensagens e parcelamentos (entra com a conta gov.br)','https://cav.receita.fazenda.gov.br/autenticacao/login'],
+  ['Portal do Simples Nacional','Serviços do MEI e do Simples','https://www8.receita.fazenda.gov.br/SimplesNacional/Servicos/Grupo.aspx?grp=t&area=2'],
+  ['Regularize (dívida ativa)','Ver e negociar dívidas na Procuradoria','https://www.regularize.pgfn.gov.br/'],
+  ['Conta gov.br','Senha e nível da conta para entrar nos sites','https://www.gov.br/governodigital/pt-br/conta-gov-br']];
+const valorDAS=(ano,ativ)=>{const sm=SAL_MIN[ano]||SAL_MIN[Math.max(...Object.keys(SAL_MIN).map(Number))];const a=MEI_ATIV[ativ]||MEI_ATIV.com;return Math.round((sm*0.05+a[1]+a[2])*100)/100};
+const venceDAS=comp=>{const y=+comp.slice(0,4),m=+comp.slice(5,7);return new Date(y,m,20)};// dia 20 do mês seguinte
+const fmtCnpj=d=>{d=String(d||'').replace(/\D/g,'');return d.length===14?`${d.slice(0,2)}.${d.slice(2,5)}.${d.slice(5,8)}/${d.slice(8,12)}-${d.slice(12)}`:d};
+function salvarFiscal(m){saveCfg({fiscal:{...fiscal(),...m}})}
+function stDAS(comp){const f=fiscal(),d=(f.das||{})[comp];if(d&&d.st==='pago')return{k:'pago',t:'Paga'};const v=venceDAS(comp),hj=today();const ini=f.inicio||'';if(ini&&comp<ini)return{k:'na',t:'Antes do CNPJ'};if(f.desde&&comp<f.desde)return{k:'na',t:'—'};
+  if(new Date(+comp.slice(0,4),+comp.slice(5,7)-1,1)>hj)return{k:'futuro',t:'Ainda não'};if(v<hj)return{k:'vencida',t:'Vencida'};return{k:'aberta',t:'Em aberto'}}
+function faturamentoAno(ano){return movimentos().filter(m=>m.tipo==='e'&&m.data.startsWith(String(ano))).reduce((s,m)=>s+m.valor,0)}
+function vImpostos(){
+  const f=fiscal(),c=f.consulta,hj=today(),ano=hj.getFullYear();
+  const fat=faturamentoAno(ano),pct=Math.min(100,fat/LIMITE_MEI*100);
+  const comps=[];for(let m=1;m<=12;m++)comps.push(`${ano}-${pad(m)}`);
+  const anoAnt=ano-1,fatAnt=faturamentoAno(anoAnt),dasn=(f.dasn||{})[anoAnt];
+  const val=valorDAS(ano,f.ativ);
+  const atual=comps.filter(k=>['aberta','vencida'].includes(stDAS(k).k));
+  return`<header class="top"><div><div class="eyebrow">MEI e Receita Federal</div><h1>Impostos</h1></div></header>
+  <div class="section" style="margin-top:0"><h2>Seu CNPJ</h2>
+    <div class="row" style="gap:8px"><input id="fxCnpj" inputmode="numeric" placeholder="00.000.000/0001-00" value="${esc(fmtCnpj(f.cnpj||''))}" style="flex:1"><button class="btn primary" data-act="fxConsultar">Consultar</button></div>
+    ${c?`<div class="calc" style="margin-top:10px;align-items:stretch;text-align:left">
+      <div class="row between" style="gap:8px;align-items:flex-start"><b style="font-size:1.02rem">${esc(c.razao||'')}</b><span class="chip ${/ativa/i.test(c.situacao||'')?'s-conf':'s-canc'}">${esc(c.situacao||'')}</span></div>
+      ${c.fantasia?`<span class="muted">${esc(c.fantasia)}</span>`:''}
+      <span>CNPJ <b>${esc(fmtCnpj(c.cnpj))}</b> · aberto em ${esc(c.abertura?fmtData(c.abertura):'')}</span>
+      <span>${c.mei?'<b style="color:var(--good)">MEI</b>':c.simples?'Simples Nacional':'Não é MEI'}${c.porte?' · '+esc(c.porte):''}</span>
+      ${c.cnae?`<span class="muted">Atividade: ${esc(c.cnae)}</span>`:''}
+      ${c.endereco?`<span class="muted">${esc(c.endereco)}</span>`:''}
+      <small class="muted">Consultado em ${esc(c.em?fmtData(c.em.slice(0,10)):'')}. Débitos não aparecem aqui: veja no PGMEI ou no e-CAC.</small>
+      <div class="grid2"><button class="btn" data-act="fxCopiar">Copiar CNPJ</button><a class="btn" href="https://solucoes.receita.fazenda.gov.br/servicos/cnpjreva/cnpjreva_solicitacao.asp" target="_blank" rel="noopener">Cartão CNPJ</a></div>
+    </div>`:'<small class="muted">Digite o CNPJ da confeitaria e toque em Consultar para ver a situação cadastral na Receita.</small>'}
+  </div>
+  <div class="section"><h2>Guia mensal do MEI (DAS ${ano})</h2>
+    <div class="grid2"><div class="field"><label for="fxAtiv">Atividade</label><select id="fxAtiv" data-fx="ativ">${Object.entries(MEI_ATIV).map(([k,v])=>`<option value="${k}" ${k===f.ativ?'selected':''}>${v[0]}</option>`).join('')}</select></div>
+      <div class="field"><span class="lbl">Valor da guia</span><b style="font-size:1.3rem;padding:8px 0;display:block">${brl(val)}</b></div></div>
+    <small class="muted">5% do salário mínimo (${brl(SAL_MIN[ano]||0)}) + ICMS/ISS. Vence todo dia 20 do mês seguinte. Atrasou: multa de 0,33% ao dia (até 20%) mais juros.</small>
+    ${atual.length?`<div class="note warn" style="margin-top:10px">${atual.map(k=>{const s=stDAS(k);return`Guia de <b>${MES[+k.slice(5)-1]}</b> ${s.k==='vencida'?'<b class="up">vencida</b>':'vence'} em ${fmtData(isoD(venceDAS(k)))}`}).join('<br>')}</div>`:''}
+    <a class="btn primary block" style="margin-top:10px" data-act="fxPgmei" href="${LINKS_FISCAIS[0][2]}" target="_blank" rel="noopener">Gerar guia no PGMEI (copia o CNPJ)</a>
+    <div class="list" style="margin-top:10px">${comps.map(k=>{const s=stDAS(k),d=(f.das||{})[k];return`<div class="item static"><div class="main"><div class="t">${MES[+k.slice(5)-1].charAt(0).toUpperCase()+MES[+k.slice(5)-1].slice(1)}</div><div class="s">vence ${fmtData(isoD(venceDAS(k)))}${d&&d.st==='pago'?` · paga em ${fmtData(d.data)} · ${brl(d.valor)}`:''}</div></div><div class="end" style="gap:6px;display:flex;align-items:center">${s.k==='na'?'':`<span class="chip ${s.k==='pago'?'s-pronto':s.k==='aberta'?'s-conf':'s-orc'}" style="${s.k==='vencida'?'color:var(--bad)':''}">${s.t}</span>`}${s.k==='pago'?`<button class="btn ghost" data-dasdesf="${k}" style="min-height:32px">Desfazer</button>`:s.k==='futuro'||(s.k==='na'&&s.t==='Antes do CNPJ')?'':`<button class="btn${s.k==='na'?' ghost':''}" data-daspaguei="${k}" style="min-height:32px">Paguei</button>`}</div></div>`}).join('')}</div>
+    <small class="muted">Ao marcar “Paguei”, a guia entra nas despesas do Financeiro.</small>
+  </div>
+  <div class="section"><h2>Faturamento de ${ano}</h2>
+    <div class="row between"><span>Recebido no ano</span><b>${brl(fat)}</b></div>
+    <div class="bar" style="margin:8px 0"><i style="animation:none;width:${Math.max(2,pct)}%;${pct>=80?'background:var(--warn)':''}"></i></div>
+    <small class="muted">${fmt(pct,0)}% do limite do MEI (${brl(LIMITE_MEI)} por ano). Conta o que foi registrado como entrada no Financeiro.</small>
+    ${pct>=80?`<div class="note warn" style="margin-top:8px">Perto do limite do MEI. Converse com um contador antes de passar de ${brl(LIMITE_MEI)}.</div>`:''}
+  </div>
+  <div class="section"><h2>Declaração anual (DASN-SIMEI ${anoAnt})</h2>
+    <div class="row between"><span>Faturamento de ${anoAnt}</span><b>${brl(fatAnt)}</b></div>
+    <small class="muted">Entregue até 31 de maio de ${ano}. Para confeitaria, o valor vai em “Receita com comércio e indústria”.</small>
+    <div class="grid2" style="margin-top:8px"><a class="btn" href="${LINKS_FISCAIS[1][2]}" target="_blank" rel="noopener">Fazer a declaração</a>${dasn&&dasn.st==='entregue'?`<button class="btn ghost" data-act="fxDasnDesf">✓ Entregue em ${esc(fmtData(dasn.data))}</button>`:'<button class="btn primary" data-act="fxDasn">Já entreguei</button>'}</div>
+  </div>
+  <div class="section"><h2>Sites da Receita</h2><div class="list">${LINKS_FISCAIS.map(([t,s,u])=>`<a class="item" href="${u}" target="_blank" rel="noopener" data-fxlink><div class="main"><div class="t">${esc(t)}</div><div class="s">${esc(s)}</div></div><div class="end">›</div></a>`).join('')}</div>
+    <small class="muted">Ao abrir um site, o CNPJ já fica copiado para colar.</small></div>`;
+}
+async function consultarCnpj(){
+  const el=document.getElementById('fxCnpj');const d=String(el&&el.value||'').replace(/\D/g,'');
+  if(d.length!==14){toast('Digite os 14 números do CNPJ.');return}
+  toast('Consultando a Receita…');
+  let j=null;try{const r=await fetch(`https://brasilapi.com.br/api/cnpj/v1/${d}`);if(r.ok)j=await r.json()}catch(e){}
+  if(!j){try{const r=await fetch(`https://minhareceita.org/${d}`);if(r.ok)j=await r.json()}catch(e){}}
+  if(!j){salvarFiscal({cnpj:d});toast('Não consegui consultar agora. O CNPJ ficou salvo; tente de novo mais tarde.');return}
+  const end=[[j.descricao_tipo_de_logradouro,j.logradouro].filter(Boolean).join(' '),j.numero,j.bairro,[j.municipio,j.uf].filter(Boolean).join(' - ')].filter(Boolean).join(', ');
+  const consulta={cnpj:d,razao:j.razao_social||'',fantasia:j.nome_fantasia||'',situacao:j.descricao_situacao_cadastral||'',abertura:j.data_inicio_atividade||'',mei:!!j.opcao_pelo_mei,simples:!!j.opcao_pelo_simples,porte:j.porte||j.descricao_porte||'',cnae:[j.cnae_fiscal,j.cnae_fiscal_descricao].filter(Boolean).join(' · '),endereco:end,em:new Date().toISOString()};
+  const hj=today(),pv=new Date(hj.getFullYear(),hj.getMonth()-1,1);salvarFiscal({cnpj:d,consulta,inicio:f_inicio(j.data_inicio_atividade),desde:fiscal().desde||`${pv.getFullYear()}-${pad(pv.getMonth()+1)}`});toast('CNPJ consultado');
+}
+const f_inicio=d=>d?String(d).slice(0,7):'';
+function copiarCnpj(silencioso){const d=fiscal().cnpj;if(!d){if(!silencioso)toast('Cadastre o CNPJ primeiro.');return}try{navigator.clipboard.writeText(d)}catch(e){}if(!silencioso)toast('CNPJ copiado: '+fmtCnpj(d))}
+function pagueiDAS(comp){
+  const f=fiscal(),val=valorDAS(+comp.slice(0,4),f.ativ);
+  const sh=openSheet(`Guia de ${MES[+comp.slice(5)-1]}`,`<form class="f"><div class="grid2"><div class="field"><label for="dV">Valor pago</label><input id="dV" name="valor" inputmode="decimal" value="${inVal(val)}"></div><div class="field"><label for="dD">Data</label><input id="dD" name="data" type="date" value="${isoD(new Date())}"></div></div><div class="actions"><button class="btn primary" type="submit">Marcar como paga</button></div></form>`);
+  sh.querySelector('form').addEventListener('submit',e=>{e.preventDefault();const fm=e.target;salvarFiscal({das:{...(f.das||{}),[comp]:{st:'pago',valor:num(fm.valor.value),data:fm.data.value}}});closeSheet();toast('Guia marcada como paga')});
+}
+// avisos na página inicial
+function avisosFiscais(){
+  const f=fiscal();if(!f.cnpj&&!f.consulta)return'';
+  const hj=today(),out=[];
+  const ant=new Date(hj.getFullYear(),hj.getMonth()-1,1),comp=`${ant.getFullYear()}-${pad(ant.getMonth()+1)}`,s=stDAS(comp),v=venceDAS(comp);
+  if(s.k==='vencida')out.push(`<b class="up">Guia DAS de ${MES[ant.getMonth()]} vencida</b> (era dia ${fmtData(isoD(v))}).`);
+  else if(s.k==='aberta'&&dayDiff(isoD(v))<=7)out.push(`Guia DAS de ${MES[ant.getMonth()]} vence dia ${v.getDate()}/${pad(v.getMonth()+1)}.`);
+  const aa=hj.getFullYear()-1;if(hj.getMonth()<=4&&!((f.dasn||{})[aa]&&f.dasn[aa].st==='entregue'))out.push(`Declaração anual do MEI de ${aa}: entregar até 31/05.`);
+  return out.length?`<a class="note warn" href="#impostos" style="margin-top:12px">${out.join('<br>')}</a>`:'';
 }
 
 /* ---------- pagamentos e recibo ---------- */
@@ -2450,7 +2690,17 @@ async function imagemPronta(cv,filename){
 
 /* ---------- eventos globais ---------- */
 document.addEventListener('click',e=>{
-  const t=e.target.closest('[data-galfoto],[data-galcat],[data-act],[data-ped],[data-rec],[data-ing],[data-filtro],[data-seg],[data-comp],[data-card],[data-cat],[data-tam],[data-segc],[data-goto]');if(!t)return;
+  const t=e.target.closest('[data-agdia],[data-agmes],[data-agnovo],[data-finmes],[data-fin],[data-finfil],[data-mov],[data-daspaguei],[data-dasdesf],[data-fxlink],[data-galfoto],[data-galcat],[data-act],[data-ped],[data-rec],[data-ing],[data-filtro],[data-seg],[data-comp],[data-card],[data-cat],[data-tam],[data-segc],[data-goto]');if(!t)return;
+  if(t.dataset.agdia){ag.dia=t.dataset.agdia;return render()}
+  if(t.dataset.agmes){ag.mes+=+t.dataset.agmes;if(ag.mes<0){ag.mes=11;ag.ano--}if(ag.mes>11){ag.mes=0;ag.ano++}ag.dia='';return render()}
+  if(t.dataset.agnovo)return formPed(null,{entrega:t.dataset.agnovo});
+  if(t.dataset.finmes){fin.mes+=+t.dataset.finmes;if(fin.mes<0){fin.mes=11;fin.ano--}if(fin.mes>11){fin.mes=0;fin.ano++}return render()}
+  if(t.dataset.fin)return formLanc(null,t.dataset.fin);
+  if(t.dataset.finfil){fin.filtro=t.dataset.finfil;return render()}
+  if(t.dataset.mov)return abrirMov(t.dataset.mov);
+  if(t.dataset.daspaguei)return pagueiDAS(t.dataset.daspaguei);
+  if(t.dataset.dasdesf){const f=fiscal(),d={...(f.das||{})};delete d[t.dataset.dasdesf];salvarFiscal({das:d});return toast('Guia voltou para em aberto')}
+  if(t.dataset.fxlink!==undefined){copiarCnpj(true);return}
   if(t.dataset.galfoto){const f=t.dataset.galfoto;if(gal.sel){const k=gal.sel.indexOf(f);if(k>=0)gal.sel.splice(k,1);else if(gal.sel.length>=10){toast('Até 10 fotos de cada vez.');return}else gal.sel.push(f);return render()}return verFotoGaleria(f)}
   if(t.dataset.galcat!==undefined){gal.cat=t.dataset.galcat;return render()}
   if(t.dataset.tam)return formTam(t.dataset.tam);
@@ -2466,6 +2716,13 @@ document.addEventListener('click',e=>{
   if(t.dataset.filtro){filtroPed=t.dataset.filtro;return render()}
   const a=t.dataset.act;
   if(a==='fechar')return closeSheet(+t.dataset.layer||1);
+  if(a==='mais'){e.preventDefault();return abrirMais()}
+  if(a==='finCsv')return finCsv();
+  if(a==='fxConsultar')return consultarCnpj();
+  if(a==='fxCopiar')return copiarCnpj();
+  if(a==='fxPgmei'){copiarCnpj(true);return}
+  if(a==='fxDasn'){const aa=today().getFullYear()-1;salvarFiscal({dasn:{...(fiscal().dasn||{}),[aa]:{st:'entregue',data:isoD(new Date())}}});return toast('Declaração marcada como entregue')}
+  if(a==='fxDasnDesf'){const aa=today().getFullYear()-1,d={...(fiscal().dasn||{})};delete d[aa];salvarFiscal({dasn:d});return}
   if(a==='galSel'){gal.sel=gal.sel?null:[];return render()}
   if(a==='galEnviar'){if(gal.sel&&gal.sel.length)formEnviarFotos(gal.sel.slice());return}
   if(a==='galPublicar'){if(gal.sel&&gal.sel.length){const it=galItem(gal.sel[0]);criarPost(null,{fotos:gal.sel.slice(),p:{descricao:(it&&it.titulo)||'',cliente:''}})}return}
@@ -2484,27 +2741,28 @@ document.addEventListener('click',e=>{
   if(a==='imgCardapio')return imagemCardapio();
   if(a==='txtCardapio')return textoCardapio();
   if(a==='sair'){if(sb)sb.auth.signOut();return}
-  if(a==='backup'){const j=JSON.stringify({app:'bia-marques',versao:1,exportadoEm:new Date().toISOString(),ingredientes:S.ing,componentes:S.comp,cardapio:S.card,galeria:S.gal,receitas:S.rec,pedidos:S.ped,config:{geral:S.cfg}},null,1);getDownloads().then(d=>d.save({filename:`backup-bia-marques-${isoD(new Date())}.json`,data:new Blob([j],{type:'application/json'})}));toast('Backup baixado');return}
+  if(a==='backup'){const j=JSON.stringify({app:'bia-marques',versao:1,exportadoEm:new Date().toISOString(),ingredientes:S.ing,componentes:S.comp,cardapio:S.card,galeria:S.gal,lancamentos:S.lan,compras:S.compr,receitas:S.rec,pedidos:S.ped,config:{geral:S.cfg}},null,1);getDownloads().then(d=>d.save({filename:`backup-bia-marques-${isoD(new Date())}.json`,data:new Blob([j],{type:'application/json'})}));toast('Backup baixado');return}
   if(a==='backupTexto'){const j=JSON.stringify({ingredientes:S.ing,massasRecheiosCoberturas:S.comp,cardapio:S.card,receitas:S.rec,pedidos:S.ped,ajustes:S.cfg});try{navigator.clipboard.writeText(j).then(()=>toast('Backup copiado. Cole numa nota para guardar.'),()=>toast('Não consegui copiar neste aparelho.'))}catch(err){toast('Não consegui copiar neste aparelho.')}}
 });
 document.addEventListener('submit',e=>{
   if(e.target.id!=='fCfg')return;e.preventDefault();const f=e.target;
-  saveCfg({linkAvaliar:f.linkAvaliar.value.trim(),nome:f.nome.value.trim(),valorHora:num(f.valorHora.value),margemPct:num(f.margemPct.value),indiretosPct:num(f.indiretosPct.value),sinalPct:num(f.sinalPct.value),horasKg:num(f.horasKg.value),embalagemPadrao:num(f.embalagemPadrao.value),whatsapp:f.whatsapp.value.trim(),instagram:f.instagram.value.trim(),email:f.email.value.trim(),site:f.site.value.trim(),pix:f.pix.value.trim(),pixTipo:f.pixTipo.value,pixNome:f.pixNome.value.trim(),pixCidade:f.pixCidade.value.trim(),linkPagamento:f.linkPagamento.value.trim(),avaliacoes:f.avaliacoes.value.trim(),endereco:f.endereco.value.trim(),horarioSem:f.horarioSem.value.trim(),horarioDom:f.horarioDom.value.trim(),prazoTopo:num(f.prazoTopo.value),prazoSem:num(f.prazoSem.value),pagamento:f.pagamento.value.trim(),decoracaoTxt:f.decoracaoTxt.value.trim(),infos:f.infos.value.split('\n').map(x=>x.trim()).filter(Boolean).join('\n')});toast('Ajustes salvos');
+  saveCfg({capacidadeDia:Math.max(1,Math.round(num(f.capacidadeDia.value))||3),linkAvaliar:f.linkAvaliar.value.trim(),nome:f.nome.value.trim(),valorHora:num(f.valorHora.value),margemPct:num(f.margemPct.value),indiretosPct:num(f.indiretosPct.value),sinalPct:num(f.sinalPct.value),horasKg:num(f.horasKg.value),embalagemPadrao:num(f.embalagemPadrao.value),whatsapp:f.whatsapp.value.trim(),instagram:f.instagram.value.trim(),email:f.email.value.trim(),site:f.site.value.trim(),pix:f.pix.value.trim(),pixTipo:f.pixTipo.value,pixNome:f.pixNome.value.trim(),pixCidade:f.pixCidade.value.trim(),linkPagamento:f.linkPagamento.value.trim(),avaliacoes:f.avaliacoes.value.trim(),endereco:f.endereco.value.trim(),horarioSem:f.horarioSem.value.trim(),horarioDom:f.horarioDom.value.trim(),prazoTopo:num(f.prazoTopo.value),prazoSem:num(f.prazoSem.value),pagamento:f.pagamento.value.trim(),decoracaoTxt:f.decoracaoTxt.value.trim(),infos:f.infos.value.split('\n').map(x=>x.trim()).filter(Boolean).join('\n')});toast('Ajustes salvos');
 });
 document.addEventListener('input',e=>{if(e.target.id==='buscaIng'){buscaIng=e.target.value;const pos=e.target.selectionStart;render();const n=$('#buscaIng');if(n){n.focus();try{n.setSelectionRange(pos,pos)}catch(_){}}}});
-document.addEventListener('change',e=>{if(e.target.id==='galFile'){const fs=Array.from(e.target.files||[]);e.target.value='';galUpload(fs)}
+document.addEventListener('change',e=>{if(e.target.dataset&&e.target.dataset.fx==='ativ'){salvarFiscal({ativ:e.target.value});return}
+  if(e.target.id==='galFile'){const fs=Array.from(e.target.files||[]);e.target.value='';galUpload(fs)}
   if(e.target.id==='notaFile'){const fs=Array.from(e.target.files||[]);e.target.value='';lerFotos(fs)}
   if(e.target.id==='rsFile'){const f=e.target.files&&e.target.files[0];e.target.value='';if(f)restaurarBackup(f)}});
 async function restaurarBackup(file){
   let j;try{j=JSON.parse(await file.text())}catch(er){toast('Esse arquivo não é um backup do app.');return}
-  const m={ingredientes:j.ingredientes||{},componentes:j.componentes||j.massasRecheiosCoberturas||{},cardapio:j.cardapio||{},galeria:j.galeria||{},receitas:j.receitas||{},pedidos:j.pedidos||{},config:j.config||(j.ajustes?{geral:j.ajustes}:{})};
+  const m={ingredientes:j.ingredientes||{},componentes:j.componentes||j.massasRecheiosCoberturas||{},cardapio:j.cardapio||{},galeria:j.galeria||{},lancamentos:j.lancamentos||{},compras:j.compras||{},receitas:j.receitas||{},pedidos:j.pedidos||{},config:j.config||(j.ajustes?{geral:j.ajustes}:{})};
   const n=Object.keys(m.pedidos).length,ni=Object.keys(m.ingredientes).length,nc=Object.keys(m.componentes).length;
   if(!n&&!ni&&!nc&&!Object.keys(m.cardapio).length){toast('Esse backup está vazio.');return}
   const sh=openSheet('Restaurar backup',`<div class="stack"><p style="margin:0">Este backup tem <b>${n} pedidos</b>, <b>${ni} ingredientes</b>, <b>${nc} massas, recheios, coberturas, tamanhos e toppers</b>, ${Object.keys(m.cardapio).length} bolos no cardápio e ${Object.keys(m.receitas).length} receitas.</p><p class="muted" style="margin:0">O que tiver o mesmo item no app será trocado pelo do backup. O resto fica como está.</p><button class="btn primary" type="button" data-ok>Restaurar</button></div>`);
   sh.querySelector('[data-ok]').addEventListener('click',async ev=>{ev.target.disabled=true;ev.target.textContent='Restaurando…';
     try{
       if(S.db&&S.db.importar)await S.db.importar(m);
-      else{const k={ingredientes:'ing',componentes:'comp',cardapio:'card',galeria:'gal',receitas:'rec',pedidos:'ped'};Object.entries(k).forEach(([c,kk])=>{S[kk]={...S[kk],...m[c]}});if(m.config.geral)S.cfg={...DEFAULT_CFG,...m.config.geral};saveLocal();render()}
+      else{const k={ingredientes:'ing',componentes:'comp',cardapio:'card',galeria:'gal',lancamentos:'lan',compras:'compr',receitas:'rec',pedidos:'ped'};Object.entries(k).forEach(([c,kk])=>{S[kk]={...S[kk],...m[c]}});if(m.config.geral)S.cfg={...DEFAULT_CFG,...m.config.geral};saveLocal();render()}
       closeSheet();toast('Backup restaurado');
     }catch(er){ev.target.disabled=false;ev.target.textContent='Restaurar';toast('Não consegui restaurar. Confira a internet e tente de novo.')}});
 }
