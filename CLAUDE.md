@@ -108,3 +108,9 @@ Sirva a pasta com qualquer servidor estático (ex.: `npx serve .`). Para trazer 
 - Guia DAS = 5% do salário mínimo (`SAL_MIN`, atualizar todo janeiro) + ICMS/ISS; vence dia 20 do mês seguinte (`venceDAS`). "Paguei" grava e entra no Financeiro.
 - Faturamento do ano (entradas do Financeiro) contra o limite do MEI (`LIMITE_MEI` = 81 mil); declaração anual DASN-SIMEI (até 31/05) com o faturamento do ano anterior; `LINKS_FISCAIS` (PGMEI, DASN, cartão CNPJ, e-CAC, Simples, Regularize, gov.br) copiam o CNPJ ao abrir. Débitos não vêm da consulta (PGMEI/e-CAC pedem login/captcha).
 - `avisosFiscais()` no Início: guia vencida ou vencendo em 7 dias; declaração anual pendente de janeiro a maio.
+
+## Link de pagamento do cartão
+
+- Ajustes → "Operadora do cartão" (`escolherOperadora`, `cfg.operadora`: `OPERADORAS` InfinitePay/Mercado Pago/PagBank ou outra com `operadoraNome`/`operadoraUrl`). `opCartao()` dá nome e endereço.
+- No pedido, embaixo do "Link de pagamento (cartão)": "Criar link na <operadora>" abre o site/app (InfinitePay: `app.infinitepay.io/link-de-pagamento`) e copia o valor a cobrar (sinal, ou o que falta se já pagou), no formato "65,00"; "Colar link" lê a área de transferência e põe o primeiro https:// no campo.
+- Rascunho do pedido (`guardarRascunho`, chave `bia-rascunho-pedido` no localStorage): gravado ao tocar "Criar link" e quando o app vai para segundo plano com o pedido aberto (`visibilitychange`). Se o celular fechar o app, o Início mostra "Continuar o pedido" (`avisoRascunho`, vale 12 h; `formPed(id, dados)` junta o rascunho ao pedido salvo). Salvar o pedido apaga o rascunho.

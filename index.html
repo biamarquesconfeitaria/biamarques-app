@@ -491,6 +491,7 @@ function vInicio(){
   </div>
   ${orc?`<div class="note" style="margin-top:12px">${orc} orçamento${orc>1?'s':''} esperando resposta do cliente.</div>`:''}
   ${S.mode==='nuvem'&&!Object.keys(S.ing).length&&!Object.keys(S.comp).length&&!Object.keys(S.ped).length?'<a class="note warn" href="#ajustes" style="margin-top:12px"><b>Seu app está vazio.</b> Toque aqui e use “Restaurar backup” para trazer os dados.</a>':''}
+  ${avisoRascunho()}
   ${alertaPrecos()}
   ${avisosFiscais()}
   <div class="section"><div class="row between"><h2>Próximas retiradas</h2><a class="btn ghost" href="#pedidos">Ver todos</a></div>${lista}</div>
@@ -565,6 +566,7 @@ function vAjustes(){
       <div class="field"><label for="cPixC">Cidade</label><input id="cPixC" name="pixCidade" value="${esc(c.pixCidade)}" placeholder="Araras"></div>
     </div>
     <div class="field"><label for="cLink">Link de pagamento (cartão)</label><input id="cLink" name="linkPagamento" type="url" value="${esc(c.linkPagamento)}" placeholder="https://…"><small>Usado em todos os pedidos. Dá para trocar em cada pedido.</small></div>
+    <div class="field"><span class="lbl">Operadora do cartão</span><button class="btn" type="button" data-act="opCartao">${opCartao().url?`${esc(opCartao().nome)} · trocar`:'Escolher (InfinitePay ou outra)'}</button><small>O botão “Criar link” do pedido abre direto nela.</small></div>
     <div class="field"><label for="cAval">Link das avaliações</label><input id="cAval" name="avaliacoes" type="url" value="${esc(c.avaliacoes)}" placeholder="https://g.page/r/…"><small>Página do Google ou Instagram com as avaliações. Aparece no orçamento.</small></div>
     <div class="field"><label for="cAvaliar">Link para o cliente deixar avaliação</label><input id="cAvaliar" name="linkAvaliar" type="url" value="${esc(c.linkAvaliar||'')}" placeholder="https://g.page/r/…/review"><small>No Google: Perfil da Empresa → “Pedir avaliações” → copiar o link. Vai no recibo e na mensagem do pedido entregue. Em branco, usa o link das avaliações acima.</small></div>
     <h3 class="sub">Retirada e regras</h3>
@@ -802,7 +804,7 @@ function avisosPedido(d){
 }
 function formPed(id,prefill){
   const base={linkPag:'',cliente:'',telefone:'',entrega:isoD(new Date(Date.now()+3*864e5)),hora:'',retirada:'local',tamanhoId:'',valorBolo:'',massaId:'',recheioIds:[],coberturaId:'',topper:false,topperId:'',adicEspecial:'',decoracoes:[],horas:'',embalagem:'',extras:'',valor:'',sinal:'',status:'orcamento',descricao:'',obs:''};
-  const p={...base,...(id?S.ped[id]:(prefill||{}))};
+  const p={...base,...(id?S.ped[id]:{}),...(prefill||{})};
   const st={retirada:p.retirada||'local',tamanhoId:p.tamanhoId||'',massaId:p.massaId||'',recheioIds:Array.isArray(p.recheioIds)?p.recheioIds.slice():[],coberturaId:p.coberturaId||'',topper:!!p.topper,topperId:p.topperId||'',decoracoes:Array.isArray(p.decoracoes)?p.decoracoes.slice():[]};
   let autoValor=!id||!num(p.valor);
   let autoAdic=p.adicEspecial===''||p.adicEspecial==null;
@@ -837,7 +839,9 @@ function formPed(id,prefill){
     </div>
     ${id?`<div class="field" data-pgs></div>`:''}
     <div class="row between muted num wrapflex" id="pSaldo" style="font-size:.9rem"></div>
-    <div class="field"><label for="pLink">Link de pagamento (cartão)</label><input id="pLink" name="linkPag" type="url" value="${esc(p.linkPag||'')}" placeholder="${esc(S.cfg.linkPagamento||'https://…')}"><small>${S.cfg.linkPagamento?'Deixe em branco para usar o link padrão dos Ajustes.':'Cole aqui o link da maquininha, se o cliente for pagar no cartão.'}</small></div>
+    <div class="field"><label for="pLink">Link de pagamento (cartão)</label><input id="pLink" name="linkPag" type="url" value="${esc(p.linkPag||'')}" placeholder="${esc(S.cfg.linkPagamento||'https://…')}"><small>${S.cfg.linkPagamento?'Deixe em branco para usar o link padrão dos Ajustes.':'Cole aqui o link da maquininha, se o cliente for pagar no cartão.'}</small>
+      <div class="grid2" style="margin-top:8px"><a class="btn" id="pCriarLink" href="${esc(opCartao().url||'#')}" target="_blank" rel="noopener">${opCartao().url?`Criar link na ${esc(opCartao().nome)} ›`:'Criar link de pagamento ›'}</a><button class="btn" type="button" id="pColarLink">Colar link</button></div>
+      <small class="muted" id="pLinkDica">${opCartao().url?'O valor a cobrar já fica copiado. Crie o link, copie e volte aqui para colar.':'Escolha a operadora do cartão (InfinitePay ou outra) na primeira vez.'}</small></div>
     <div class="calc" data-lucro></div>
     <details><summary class="muted" style="cursor:pointer;font-weight:600;font-size:.88rem">Ajustar horas e embalagem deste bolo</summary>
       <div class="grid2" style="margin-top:10px">
@@ -936,10 +940,20 @@ function formPed(id,prefill){
   });
   f.addEventListener('submit',e=>{e.preventDefault();
     if(st.topper&&!st.topperId){toast('Escolha o tipo de topo de bolo ou marque “Não”.');return}
-    const d=read(),antes=id&&S.ped[id]?S.ped[id].status:'';
+    const d=read(),antes=id&&S.ped[id]?S.ped[id].status:'';limparRascunho();
     save('ped',id,d).then(nid=>{if(d.status==='entregue'&&antes!=='entregue')pedidoFinalizado(nid)});closeSheet();toast('Pedido salvo')});
   const avb=sh.querySelector('#pAval');if(avb)avb.addEventListener('click',()=>pedirAvaliacao(id));
   const gp=sh.querySelector('[data-galped]');if(gp)galeriaPedido(gp,id);
+  pedAberto={id,read,nome:()=>f.cliente.value.trim()};
+  const cl=sh.querySelector('#pCriarLink');if(cl)cl.addEventListener('click',e=>{
+    if(!opCartao().url){e.preventDefault();escolherOperadora(()=>{cl.href=opCartao().url;cl.textContent=`Criar link na ${opCartao().nome} ›`;sh.querySelector('#pLinkDica').textContent='O valor a cobrar já fica copiado. Crie o link, copie e volte aqui para colar.'});return}
+    const d=read(),v=num(d.valor),pago=totalPago({...d,pagamentos:(id&&S.ped[id]&&S.ped[id].pagamentos)||[]});const cobrar=v?(pago>0?Math.max(0,v-pago):Math.round(v*num(S.cfg.sinalPct)/100*100)/100):0;
+    guardarRascunho();
+    if(cobrar){try{navigator.clipboard.writeText(cobrar.toFixed(2).replace('.',','))}catch(_){}toast(`Valor ${brl(cobrar)} copiado. Crie o link e volte para colar.`)}});
+  const pc=sh.querySelector('#pColarLink');if(pc)pc.addEventListener('click',async()=>{
+    let t='';try{t=(await navigator.clipboard.readText()||'').trim()}catch(_){toast('Segure o dedo no campo do link e escolha Colar.');f.linkPag.focus();return}
+    const m=t.match(/https?:\/\/\S+/);if(!m){toast('Não achei um link copiado. Copie o link na operadora e tente de novo.');return}
+    f.linkPag.value=m[0].replace(/[).,;]+$/,'');f.linkPag.dispatchEvent(new Event('input',{bubbles:true}));toast('Link colado')});
   const pb=sh.querySelector('#pPost');if(pb)pb.addEventListener('click',()=>criarPost(id));
   sh.querySelector('#pZap').addEventListener('click',()=>openEnvio(read(),id));
   const del=sh.querySelector('#pDel');if(del)del.addEventListener('click',()=>armDelete(del,async()=>{const fts=((S.ped[id]&&S.ped[id].fotos)||[]).filter(f=>typeof f==='string'&&!Object.values(S.card).some(c=>(c.fotos||[]).includes(f))&&!Object.values(S.gal||{}).some(g=>g.foto===f&&!g.oculta));remove('ped',id);closeSheet();toast('Pedido excluído');if(fts.length){const a=await getAssets();if(a)fts.forEach(f=>a.delete(f).catch(()=>{}))}}));
@@ -1732,6 +1746,27 @@ function avisosFiscais(){
   const aa=hj.getFullYear()-1;if(hj.getMonth()<=4&&!((f.dasn||{})[aa]&&f.dasn[aa].st==='entregue'))out.push(`Declaração anual do MEI de ${aa}: entregar até 31/05.`);
   return out.length?`<a class="note warn" href="#impostos" style="margin-top:12px">${out.join('<br>')}</a>`:'';
 }
+
+/* ---------- operadora do cartão e rascunho do pedido ---------- */
+const OPERADORAS={infinitepay:['InfinitePay','https://app.infinitepay.io/link-de-pagamento'],mercadopago:['Mercado Pago','https://www.mercadopago.com.br/tools/create'],pagbank:['PagBank','https://minhaconta.pagbank.com.br/'],outra:['Outra','']};
+const opCartao=()=>{const k=S.cfg.operadora||'';if(!k)return{nome:'',url:''};if(k==='outra')return{nome:S.cfg.operadoraNome||'operadora',url:(S.cfg.operadoraUrl||'').trim()};const o=OPERADORAS[k];return o?{nome:o[0],url:o[1]}:{nome:'',url:''}};
+function escolherOperadora(feito){
+  const sh=openSheet('Operadora do cartão',`<form class="f">
+    <p class="muted" style="margin:0">Onde você cria o link de pagamento do cartão? O botão vai abrir direto lá.</p>
+    <div class="pills" data-op>${Object.entries(OPERADORAS).map(([k,v])=>`<button type="button" class="pill" data-k="${k}" aria-pressed="${k===(S.cfg.operadora||'infinitepay')}">${v[0]}</button>`).join('')}</div>
+    <div data-outra ${(S.cfg.operadora||'infinitepay')==='outra'?'':'hidden'}><div class="field"><label for="opN">Nome</label><input id="opN" name="nome" value="${esc(S.cfg.operadoraNome||'')}" placeholder="Ex.: Ton, SumUp"></div><div class="field"><label for="opU">Endereço do site</label><input id="opU" name="url" type="url" value="${esc(S.cfg.operadoraUrl||'')}" placeholder="https://…"></div></div>
+    <div class="actions"><button class="btn primary" type="submit">Salvar</button></div></form>`,2);
+  let k=S.cfg.operadora||'infinitepay';const f=sh.querySelector('form');
+  sh.querySelector('[data-op]').addEventListener('click',e=>{const b=e.target.closest('[data-k]');if(!b)return;k=b.dataset.k;sh.querySelectorAll('[data-k]').forEach(x=>x.setAttribute('aria-pressed',x===b));sh.querySelector('[data-outra]').hidden=k!=='outra'});
+  f.addEventListener('submit',async e=>{e.preventDefault();const u=f.url.value.trim();if(k==='outra'&&!/^https?:\/\//.test(u)){toast('Coloque o endereço do site (começa com https://).');return}
+    await saveCfg({operadora:k,operadoraNome:k==='outra'?f.nome.value.trim():'',operadoraUrl:k==='outra'?u:''});closeSheet(2);toast('Operadora salva');if(feito)feito()});
+}
+let pedAberto=null;const RASC_KEY='bia-rascunho-pedido';
+function guardarRascunho(){if(!pedAberto||!document.getElementById('fPed'))return;try{const d=pedAberto.read();if(!d.cliente&&!d.tamanhoId&&!d.descricao)return;localStorage.setItem(RASC_KEY,JSON.stringify({id:pedAberto.id||'',dados:d,em:Date.now()}))}catch(e){}}
+function limparRascunho(){try{localStorage.removeItem(RASC_KEY)}catch(e){}pedAberto=null}
+function lerRascunho(){try{const r=JSON.parse(localStorage.getItem(RASC_KEY)||'null');if(!r||Date.now()-r.em>12*3600e3)return null;if(r.id&&!S.ped[r.id])r.id='';return r}catch(e){return null}}
+function avisoRascunho(){const r=lerRascunho();if(!r||document.getElementById('fPed'))return'';return`<div class="note warn" style="margin-top:12px;display:flex;flex-direction:column;gap:8px"><span>Você estava fazendo o pedido de <b>${esc(r.dados.cliente||'um cliente')}</b> e saiu do app.</span><div class="grid2"><button class="btn primary" data-act="rascContinuar">Continuar o pedido</button><button class="btn" data-act="rascDescartar">Descartar</button></div></div>`}
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')guardarRascunho()});
 
 /* ---------- pagamentos e recibo ---------- */
 const FORMAS_PG={pix:'Pix',credito:'Cartão de crédito',debito:'Cartão de débito',dinheiro:'Dinheiro',transferencia:'Transferência'};
@@ -2717,6 +2752,9 @@ document.addEventListener('click',e=>{
   const a=t.dataset.act;
   if(a==='fechar')return closeSheet(+t.dataset.layer||1);
   if(a==='mais'){e.preventDefault();return abrirMais()}
+  if(a==='rascContinuar'){const r=lerRascunho();if(r)formPed(r.id||null,r.dados);return}
+  if(a==='rascDescartar'){limparRascunho();return render()}
+  if(a==='opCartao')return escolherOperadora();
   if(a==='finCsv')return finCsv();
   if(a==='fxConsultar')return consultarCnpj();
   if(a==='fxCopiar')return copiarCnpj();
