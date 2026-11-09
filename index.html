@@ -566,6 +566,7 @@ function vAjustes(){
       <div class="field"><label for="cPixC">Cidade</label><input id="cPixC" name="pixCidade" value="${esc(c.pixCidade)}" placeholder="Araras"></div>
     </div>
     <div class="field"><label for="cLink">Link de pagamento (cartão)</label><input id="cLink" name="linkPagamento" type="url" value="${esc(c.linkPagamento)}" placeholder="https://…"><small>Usado em todos os pedidos. Dá para trocar em cada pedido.</small></div>
+    <div class="field"><label for="cParc">Parcelas no cartão (até)</label><input id="cParc" name="parcelasCartao" inputmode="numeric" value="${inVal(c.parcelasCartao||12)}"><small>Aparece no orçamento: “parcelado em até 12x com juros da operadora”.</small></div>
     <div class="field"><span class="lbl">Operadora do cartão</span><button class="btn" type="button" data-act="opCartao">${opCartao().url?`${esc(opCartao().nome)} · trocar`:'Escolher (InfinitePay ou outra)'}</button><small>O botão “Criar link” do pedido abre direto nela.</small></div>
     <div class="field"><label for="cAval">Link das avaliações</label><input id="cAval" name="avaliacoes" type="url" value="${esc(c.avaliacoes)}" placeholder="https://g.page/r/…"><small>Página do Google ou Instagram com as avaliações. Aparece no orçamento.</small></div>
     <div class="field"><label for="cAvaliar">Link para o cliente deixar avaliação</label><input id="cAvaliar" name="linkAvaliar" type="url" value="${esc(c.linkAvaliar||'')}" placeholder="https://g.page/r/…/review"><small>No Google: Perfil da Empresa → “Pedir avaliações” → copiar o link. Vai no recibo e na mensagem do pedido entregue. Em branco, usa o link das avaliações acima.</small></div>
@@ -1022,6 +1023,7 @@ function pixChaveTexto(){const c=S.cfg,k=String(c.pix||'').trim();if(!k)return''
   let v=k;if(t==='celular'){const d=k.replace(/\D/g,'').replace(/^55(?=\d{10,11}$)/,'');v=d.length===11?`(${d.slice(0,2)}) ${d.slice(2,7)}-${d.slice(7)}`:d.length===10?`(${d.slice(0,2)}) ${d.slice(2,6)}-${d.slice(6)}`:k}
   const nomes={celular:'celular',cpf:'CPF',cnpj:'CNPJ',email:'e-mail',aleatoria:'chave aleatória'};
   return`Chave Pix (${nomes[t]||'chave'}): ${v}${c.pixNome?' · '+c.pixNome:''}`}
+const parcelasCartao=()=>Math.max(1,Math.round(num(S.cfg.parcelasCartao))||12);
 const pixUrl=cod=>new URL('pix.html',location.href.split('#')[0]).href+'#'+encodeURIComponent(cod);
 function opcoesPix(p){
   const v=num(p.valor),sinal=v*num(S.cfg.sinalPct)/100,sal=saldo(p),o=[];
@@ -1036,7 +1038,7 @@ function blocoPagamento(p,pv,cod){
   const L=[];const lk=linkPagDe(p);
   if(cod){L.push(`Pix${pv?` (${pv.t.toLowerCase()}: ${brl(pv.v)})`:''}, copia e cola:`,cod)}
   else if(S.cfg.pix)L.push(`Pix: ${S.cfg.pix}`);
-  if(lk)L.push('',`Pagar no cartão (até 5x com juros da máquina): ${lk}`);
+  if(lk)L.push('',`Pagar no cartão de crédito (até ${parcelasCartao()}x com juros da operadora): ${lk}`);
   if(S.cfg.avaliacoes)L.push('',`Veja nossas avaliações: ${S.cfg.avaliacoes}`);
   return L;
 }
@@ -1099,31 +1101,43 @@ async function imagemOrcamento(p,pv,cod,pdf){
       if(cod){
         const top=y,bw=W-2*P;
         const chave=pixChaveTexto();
-        const h=pdf?(chave?520:470):(chave?300:250);
+        const h=pdf?(chave?630:580):(chave?300:250);
         ctx.fillStyle=IMG.pink;rr(ctx,P,y,bw,h,28);ctx.fill();
         let yy=y+74;
-        ctx.fillStyle=IMG.ink;ctx.font='800 44px "Figtree", sans-serif';ctx.fillText('Pix',P+36,yy);
-        ctx.textAlign='right';ctx.fillStyle=IMG.accent;ctx.font='800 44px "Figtree", sans-serif';ctx.fillText(pv?brl(pv.v):'',W-P-36,yy);ctx.textAlign='left';yy+=42;
-        ctx.fillStyle=IMG.muted;ctx.font='500 27px "Figtree", sans-serif';if(pv)ctx.fillText(pv.t,P+36,yy);
-        if(chave){yy+=50;ctx.fillStyle=IMG.ink;ctx.font='600 28px "Figtree", sans-serif';ctx.fillText(lines(ctx,chave,bw-72,1)[0],P+36,yy)}
+        ctx.fillStyle=IMG.ink;ctx.font='800 44px "Figtree", sans-serif';ctx.fillText('Pix',P+40,yy);
+        ctx.textAlign='right';ctx.fillStyle=IMG.accent;ctx.font='800 44px "Figtree", sans-serif';ctx.fillText(pv?brl(pv.v):'',W-P-40,yy);ctx.textAlign='left';yy+=42;
+        ctx.fillStyle=IMG.muted;ctx.font='500 27px "Figtree", sans-serif';if(pv)ctx.fillText(pv.t,P+40,yy);
+        if(chave){yy+=50;ctx.fillStyle=IMG.ink;ctx.font='600 28px "Figtree", sans-serif';ctx.fillText(lines(ctx,chave,bw-80,1)[0],P+40,yy)}
         if(pdf){
-          yy+=40;botao('Copiar código Pix ›',P+36,yy,bw-72,pixUrl(cod));yy+=76+44;
-          ctx.fillStyle=IMG.muted;ctx.font='500 25px "Figtree", sans-serif';
-          lines(ctx,'Toque no botão, copie e cole no app do banco em Pix copia e cola. Ou toque e segure no código abaixo.',bw-72,2).forEach(l=>{ctx.fillText(l,P+36,yy);yy+=34});
-          yy+=6;ctx.fillStyle='#FFFFFF';rr(ctx,P+30,yy,bw-60,120,18);ctx.fill();ctx.strokeStyle=IMG.soft;ctx.lineWidth=3;rr(ctx,P+30,yy,bw-60,120,18);ctx.stroke();
-          codeBox={x:P+54,y:yy+14,w:bw-108,h:92};ctx.fillStyle=IMG.ink;ctx.font='600 22px ui-monospace, Menlo, Consolas, monospace';
-          const cl=[];let rest=cod;while(rest.length&&cl.length<3){let n=rest.length;while(n>1&&ctx.measureText(rest.slice(0,n)).width>bw-108)n--;cl.push(rest.slice(0,n));rest=rest.slice(n)}
-          if(rest.length)cl[2]=cl[2].slice(0,-1)+'…';cl.forEach((l,i)=>ctx.fillText(l,P+54,yy+40+i*30));
+          yy+=40;botao('Copiar código Pix ›',P+40,yy,bw-80,pixUrl(cod));yy+=76+46;
+          ctx.fillStyle=IMG.muted;ctx.font='500 25px "Figtree", sans-serif';ctx.textAlign='center';
+          lines(ctx,'Toque no botão, copie e cole no app do banco em Pix copia e cola. Ou toque e segure no código abaixo.',bw-80,2).forEach(l=>{ctx.fillText(l,W/2,yy);yy+=34});ctx.textAlign='left';
+          yy+=10;const cbh=170;ctx.fillStyle='#FFF4F6';rr(ctx,P+40,yy,bw-80,cbh,22);ctx.fill();ctx.strokeStyle=IMG.soft;ctx.lineWidth=3;ctx.setLineDash([10,8]);rr(ctx,P+40,yy,bw-80,cbh,22);ctx.stroke();ctx.setLineDash([]);
+          ctx.fillStyle=IMG.brand;ctx.font='700 21px "Figtree", sans-serif';spaced(ctx,'PIX COPIA E COLA',P+72,yy+42,2);
+          const cw=bw-144;ctx.fillStyle=IMG.ink;ctx.font='600 23px ui-monospace, Menlo, Consolas, monospace';
+          const cl=[];let rest=cod;while(rest.length&&cl.length<3){let n=rest.length;while(n>1&&ctx.measureText(rest.slice(0,n)).width>cw)n--;cl.push(rest.slice(0,n));rest=rest.slice(n)}
+          if(rest.length)cl[2]=cl[2].slice(0,-1)+'…';
+          codeBox={x:P+72,y:yy+56,w:cw,h:cbh-72};cl.forEach((l,i)=>ctx.fillText(l,P+72,yy+86+i*34));
         }else{
           yy+=48;ctx.fillStyle=IMG.muted;ctx.font='500 26px "Figtree", sans-serif';
-          lines(ctx,'Use o Pix copia e cola enviado na conversa'+(chave?' ou a chave acima.':'.'),bw-72,2).forEach(l=>{ctx.fillText(l,P+36,yy);yy+=34});
+          lines(ctx,'Use o Pix copia e cola enviado na conversa'+(chave?' ou a chave acima.':'.'),bw-80,2).forEach(l=>{ctx.fillText(l,P+40,yy);yy+=34});
         }
         y=top+h+34;
       }
       if(lk){
-        ctx.fillStyle=IMG.ink;ctx.font='700 30px "Figtree", sans-serif';ctx.fillText('Cartão de débito ou crédito (até 5x)',P,y+20);y+=48;
-        if(pdf){botao('Pagar com cartão ›',P,y,440,lk);y+=116}
-        else{ctx.fillStyle=IMG.muted;ctx.font='500 26px "Figtree", sans-serif';lines(ctx,`Link de pagamento: ${lk}`,W-2*P,2).forEach(l=>{ctx.fillText(l,P,y+8);y+=34});y+=40}
+        const top=y,bw=W-2*P,np=parcelasCartao();
+        const txt=`Pagamento via cartão de crédito, podendo ser parcelado em até ${np}x com juros da operadora.`;
+        ctx.font='500 27px "Figtree", sans-serif';const tl=lines(ctx,txt,bw-80,3);
+        const ll=pdf?[]:(()=>{ctx.font='600 24px "Figtree", sans-serif';return lines(ctx,lk,bw-80,2)})();
+        const h=74+tl.length*38+(pdf?40+76+40:24+ll.length*32+36);
+        ctx.fillStyle=IMG.pink;rr(ctx,P,y,bw,h,28);ctx.fill();
+        let yy=y+74;
+        ctx.fillStyle=IMG.ink;ctx.font='800 44px "Figtree", sans-serif';ctx.fillText('Cartão de crédito',P+40,yy);
+        ctx.textAlign='right';ctx.fillStyle=IMG.accent;ctx.font='800 36px "Figtree", sans-serif';ctx.fillText(`até ${np}x`,W-P-40,yy);ctx.textAlign='left';yy+=46;
+        ctx.fillStyle=IMG.muted;ctx.font='500 27px "Figtree", sans-serif';tl.forEach(l=>{ctx.fillText(l,P+40,yy);yy+=38});
+        if(pdf){yy+=12;botao('Pagar com cartão ›',P+40,yy,bw-80,lk)}
+        else{yy+=8;ctx.fillStyle=IMG.accent;ctx.font='600 24px "Figtree", sans-serif';ll.forEach(l=>{ctx.fillText(l,P+40,yy);yy+=32})}
+        y=top+h+34;
       }
       y+=10;
     }
@@ -1965,7 +1979,7 @@ function dadosLink(p,pv,cod,pdfUrl,pdfNome){
     retirada:{quando:d?`${WDL[d.getDay()]}, ${pad(d.getDate())}/${pad(d.getMonth()+1)}${p.hora?' às '+p.hora.replace(':','h'):''}`:'A combinar',app:p.retirada==='app',
       local:p.retirada==='app'?'Motorista de aplicativo (por conta do cliente)':(c.endereco||''),maps:c.endereco?`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(c.endereco)}`:''},
     itens,total:brl(v),totalN:v,pg,
-    pix:cod&&pv?{cod,valor:brl(pv.v),rotulo:pv.t}:null,cartao:linkPagDe(p)||'',
+    pix:cod&&pv?{cod,valor:brl(pv.v),rotulo:pv.t}:null,cartao:linkPagDe(p)||'',parcelas:parcelasCartao(),
     insta:c.instagram?{handle:c.instagram,url:`https://instagram.com/${encodeURIComponent(c.instagram.replace(/^@/,'').trim())}`}:null,
     aval:c.avaliacoes||'',zap:zn?{num:(zn.startsWith('55')&&zn.length>=12)?zn:'55'+zn,label:c.whatsapp,url:zapHref(c.whatsapp,'')}:null,
     email:c.email||'',site:c.site?{label:c.site.replace(/^https?:\/\//i,''),url:/^https?:/i.test(c.site)?c.site:'https://'+c.site}:null,
@@ -2784,7 +2798,7 @@ document.addEventListener('click',e=>{
 });
 document.addEventListener('submit',e=>{
   if(e.target.id!=='fCfg')return;e.preventDefault();const f=e.target;
-  saveCfg({capacidadeDia:Math.max(1,Math.round(num(f.capacidadeDia.value))||3),linkAvaliar:f.linkAvaliar.value.trim(),nome:f.nome.value.trim(),valorHora:num(f.valorHora.value),margemPct:num(f.margemPct.value),indiretosPct:num(f.indiretosPct.value),sinalPct:num(f.sinalPct.value),horasKg:num(f.horasKg.value),embalagemPadrao:num(f.embalagemPadrao.value),whatsapp:f.whatsapp.value.trim(),instagram:f.instagram.value.trim(),email:f.email.value.trim(),site:f.site.value.trim(),pix:f.pix.value.trim(),pixTipo:f.pixTipo.value,pixNome:f.pixNome.value.trim(),pixCidade:f.pixCidade.value.trim(),linkPagamento:f.linkPagamento.value.trim(),avaliacoes:f.avaliacoes.value.trim(),endereco:f.endereco.value.trim(),horarioSem:f.horarioSem.value.trim(),horarioDom:f.horarioDom.value.trim(),prazoTopo:num(f.prazoTopo.value),prazoSem:num(f.prazoSem.value),pagamento:f.pagamento.value.trim(),decoracaoTxt:f.decoracaoTxt.value.trim(),infos:f.infos.value.split('\n').map(x=>x.trim()).filter(Boolean).join('\n')});toast('Ajustes salvos');
+  saveCfg({parcelasCartao:Math.max(1,Math.round(num(f.parcelasCartao.value))||12),capacidadeDia:Math.max(1,Math.round(num(f.capacidadeDia.value))||3),linkAvaliar:f.linkAvaliar.value.trim(),nome:f.nome.value.trim(),valorHora:num(f.valorHora.value),margemPct:num(f.margemPct.value),indiretosPct:num(f.indiretosPct.value),sinalPct:num(f.sinalPct.value),horasKg:num(f.horasKg.value),embalagemPadrao:num(f.embalagemPadrao.value),whatsapp:f.whatsapp.value.trim(),instagram:f.instagram.value.trim(),email:f.email.value.trim(),site:f.site.value.trim(),pix:f.pix.value.trim(),pixTipo:f.pixTipo.value,pixNome:f.pixNome.value.trim(),pixCidade:f.pixCidade.value.trim(),linkPagamento:f.linkPagamento.value.trim(),avaliacoes:f.avaliacoes.value.trim(),endereco:f.endereco.value.trim(),horarioSem:f.horarioSem.value.trim(),horarioDom:f.horarioDom.value.trim(),prazoTopo:num(f.prazoTopo.value),prazoSem:num(f.prazoSem.value),pagamento:f.pagamento.value.trim(),decoracaoTxt:f.decoracaoTxt.value.trim(),infos:f.infos.value.split('\n').map(x=>x.trim()).filter(Boolean).join('\n')});toast('Ajustes salvos');
 });
 document.addEventListener('input',e=>{if(e.target.id==='buscaIng'){buscaIng=e.target.value;const pos=e.target.selectionStart;render();const n=$('#buscaIng');if(n){n.focus();try{n.setSelectionRange(pos,pos)}catch(_){}}}});
 document.addEventListener('change',e=>{if(e.target.dataset&&e.target.dataset.fx==='ativ'){salvarFiscal({ativ:e.target.value});return}

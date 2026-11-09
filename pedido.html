@@ -117,7 +117,7 @@ ol{margin:0;padding-left:1.3em;display:flex;flex-direction:column;gap:8px;color:
   if(D.pix||D.cartao){
     html+='<section><h2>Pagamento</h2><div class="stack">';
     if(D.pix)html+='<div class="card"><div class="row"><div style="font-size:1.3rem;font-weight:800">Pix</div><div class="val" style="font-size:1.5rem;font-weight:800;color:var(--accent)">'+esc(D.pix.valor)+'</div></div><div class="muted">'+esc(D.pix.rotulo||'')+'</div><div class="muted" style="font-size:.9rem;margin-top:6px">Copie o código e cole no app do banco em Pix copia e cola.</div><div class="cod" id="cod">'+esc(D.pix.cod)+'</div><button class="btn pri" type="button" id="copiar" style="margin-top:10px">Copiar código Pix</button></div>';
-    if(D.cartao)html+='<a class="btn" href="'+esc(D.cartao)+'" target="_blank" rel="noopener">Pagar com cartão (até 5x)</a>';
+    if(D.cartao)html+='<a class="btn" href="'+esc(D.cartao)+'" target="_blank" rel="noopener">Pagar com cartão (até '+(D.parcelas||12)+'x)</a>';
     html+='</div></section>';
   }
   if(ped&&D.totalN>0)html+='<section id="acBox"><h2>Gostou do orçamento?</h2><div class="stack" id="acBts"><button class="btn pri" type="button" id="acAbrir">Aceitar orçamento</button><p class="muted" style="margin:0;font-size:.9rem;text-align:center">O pedido é confirmado com o pagamento do sinal.</p></div>'

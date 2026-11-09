@@ -114,3 +114,8 @@ Sirva a pasta com qualquer servidor estático (ex.: `npx serve .`). Para trazer 
 - Ajustes → "Operadora do cartão" (`escolherOperadora`, `cfg.operadora`: `OPERADORAS` InfinitePay/Mercado Pago/PagBank ou outra com `operadoraNome`/`operadoraUrl`). `opCartao()` dá nome e endereço.
 - No pedido, embaixo do "Link de pagamento (cartão)": "Criar link na <operadora>" abre o site/app (InfinitePay: `app.infinitepay.io/link-de-pagamento`) e copia o valor a cobrar (sinal, ou o que falta se já pagou), no formato "65,00"; "Colar link" lê a área de transferência e põe o primeiro https:// no campo.
 - Rascunho do pedido (`guardarRascunho`, chave `bia-rascunho-pedido` no localStorage): gravado ao tocar "Criar link" e quando o app vai para segundo plano com o pedido aberto (`visibilitychange`). Se o celular fechar o app, o Início mostra "Continuar o pedido" (`avisoRascunho`, vale 12 h; `formPed(id, dados)` junta o rascunho ao pedido salvo). Salvar o pedido apaga o rascunho.
+
+## Pagamento no orçamento (PDF e imagem)
+
+- Dois cartões rosa: Pix (valor, chave, botão "Copiar código Pix" e o código num quadro rosa claro tracejado "PIX COPIA E COLA") e "Cartão de crédito" (texto "podendo ser parcelado em até Nx com juros da operadora" e botão centralizado "Pagar com cartão", que é o link). Na imagem, o link aparece escrito.
+- `parcelasCartao()` = `cfg.parcelasCartao` (Ajustes → "Parcelas no cartão (até)", padrão 12); usado no orçamento, no texto do WhatsApp e na página do link (`dados.parcelas`).
