@@ -119,3 +119,8 @@ Sirva a pasta com qualquer servidor estático (ex.: `npx serve .`). Para trazer 
 
 - Dois cartões rosa: Pix (valor, chave, botão "Copiar código Pix" e o código num quadro rosa claro tracejado "PIX COPIA E COLA") e "Cartão de crédito" (texto "podendo ser parcelado em até Nx com juros da operadora" e botão centralizado "Pagar com cartão", que é o link). Na imagem, o link aparece escrito.
 - `parcelasCartao()` = `cfg.parcelasCartao` (Ajustes → "Parcelas no cartão (até)", padrão 12); usado no orçamento, no texto do WhatsApp e na página do link (`dados.parcelas`).
+
+## Enviar para o cliente avaliar
+
+- `pedirAvaliacao(id)` ("Enviar para o cliente avaliar", no pedido entregue e no pedido finalizado): escolhe uma das fotos do bolo (`fotosDe`) e manda pelo Compartilhar a foto (sem logo) + mensagem (`textoAvaliacao(p, comFoto)`) com o link de avaliação. Sem Web Share: salva a foto e abre o WhatsApp do cliente. Grava `avaliacaoPedidaEm`.
+- O Google não deixa um link já trazer a foto dentro da avaliação: a mensagem pede para o cliente tocar em "Adicionar fotos". O melhor link é o "Pedir avaliações" do Perfil da Empresa (g.page/r/…/review), que abre direto as estrelas; os links share.google salvos em Ajustes (nov/2026) abrem a busca do Google com o perfil.

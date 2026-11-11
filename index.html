@@ -852,7 +852,7 @@ function formPed(id,prefill){
     ${id?`<h3 class="sub">Fotos do bolo pronto</h3><div class="field" data-galped></div><button class="btn" type="button" id="pPost">Criar post para o Instagram</button>`:''}
     <div class="field"><label for="pStatus">Situação</label><select id="pStatus" name="status">${Object.entries(STATUS).map(([k,v])=>`<option value="${k}" ${k===p.status?'selected':''}>${v.t}</option>`).join('')}</select></div>
     <div class="field"><label for="pObs">Anotações</label><textarea id="pObs" name="obs" placeholder="Alergias, quem vai retirar…">${esc(p.obs)}</textarea></div>
-    <div class="actions"><button class="btn primary" type="submit">Salvar pedido</button><button class="btn" type="button" id="pZap">Enviar via WhatsApp</button>${id&&p.status==='entregue'?`<button class="btn" type="button" id="pAval">${p.avaliacaoPedidaEm?'Pedir avaliação de novo':'Pedir avaliação'}</button>`:''}${id?'<button class="btn danger" type="button" id="pDel">Excluir pedido</button>':''}</div>
+    <div class="actions"><button class="btn primary" type="submit">Salvar pedido</button><button class="btn" type="button" id="pZap">Enviar via WhatsApp</button>${id&&p.status==='entregue'?`<button class="btn" type="button" id="pAval">${p.avaliacaoPedidaEm?'Pedir avaliação de novo':'Enviar para o cliente avaliar'}</button>`:''}${id?'<button class="btn danger" type="button" id="pDel">Excluir pedido</button>':''}</div>
   </form>`);
   const f=sh.querySelector('form');
   const pgsBox=sh.querySelector('[data-pgs]');
@@ -1230,22 +1230,39 @@ async function desenharAssinatura(ctx,cx,base,h,wmax){
   ctx.drawImage(im,cx-w/2,base-hh,w,hh);return true;
 }
 const linkAvaliar=()=>(S.cfg.linkAvaliar||S.cfg.avaliacoes||'').trim();
-function textoAvaliacao(p){
+function textoAvaliacao(p,comFoto){
   const prim=String(p.cliente||'').trim().split(/\s+/)[0];const lk=linkAvaliar();
   return[`Olá${prim?', '+prim:''}! Esperamos que você e seus convidados tenham amado o bolo! 🎂`,
-    lk?`Se puder, deixe sua avaliação para a ${S.cfg.nome||'confeitaria'}. Leva menos de um minuto e ajuda muito:\n${lk}`:'Se puder, conte para a gente o que achou. Sua opinião ajuda muito!',
-    '','Muito obrigada pela preferência!',S.cfg.pixNome||S.cfg.nome||''].join('\n');
+    lk?`Você pode avaliar a gente no Google? É só tocar no link e escolher as estrelas ⭐⭐⭐⭐⭐\n${lk}`:'Se puder, conte para a gente o que achou. Sua opinião ajuda muito!',
+    ...(comFoto?['','📸 Mandei a foto do seu bolo: se quiser, coloque ela na avaliação (no Google, toque em “Adicionar fotos”).']:[]),
+    '','Muito obrigada pela preferência! 💕',S.cfg.pixNome||S.cfg.nome||''].join('\n');
 }
 function pedirAvaliacao(id){
   const p=S.ped[id];if(!p)return;
-  const sh=openSheet('Pedir avaliação',`<div class="stack">
-    <p style="margin:0">Pedido de <b>${esc(p.cliente||'cliente')}</b> entregue. Que tal pedir uma avaliação?</p>
+  const fs=fotosDe(id);let sel=fs.length?0:-1;
+  const sh=openSheet('Enviar para o cliente avaliar',`<div class="stack">
+    <p style="margin:0">Bolo de <b>${esc(p.cliente||'cliente')}</b>. O cliente recebe a foto do bolo, a mensagem e o link para dar as estrelas no Google.</p>
     ${linkAvaliar()?'':'<div class="note warn">Coloque o link de avaliação do Google em Ajustes para ele ir junto na mensagem.</div>'}
-    <div class="field"><label for="avTxt">Mensagem</label><textarea id="avTxt" style="min-height:170px">${esc(textoAvaliacao(p))}</textarea></div>
-    <a class="btn primary" data-av href="#" target="_blank" rel="noopener">Enviar no WhatsApp</a>
+    ${fs.length?`<div class="field"><span class="lbl">Foto que vai junto <small class="muted">(toque para escolher)</small></span><div class="gal" data-avf></div></div>`
+      :`<div class="note">Sem foto do bolo neste pedido. Adicione em “Fotos do bolo pronto” para mandar junto.</div>`}
+    <div class="field"><label for="avTxt">Mensagem</label><textarea id="avTxt" style="min-height:190px">${esc(textoAvaliacao(p,fs.length>0))}</textarea></div>
+    <button class="btn primary" type="button" data-av="share">${fs.length?'Enviar foto e mensagem':'Enviar no WhatsApp'}</button>
+    ${fs.length?'<a class="btn" data-av="zap" href="#" target="_blank" rel="noopener">Enviar só a mensagem</a>':''}
   </div>`,2);
-  const ta=sh.querySelector('#avTxt'),a=sh.querySelector('[data-av]');const set=()=>{a.href=zapHref(p.telefone,ta.value)};set();ta.addEventListener('input',set);
-  a.addEventListener('click',()=>{save('ped',id,{...S.ped[id],avaliacaoPedidaEm:new Date().toISOString()})});
+  const ta=sh.querySelector('#avTxt'),gal=sh.querySelector('[data-avf]'),zap=sh.querySelector('[data-av="zap"]');
+  const draw=()=>{if(gal)gal.innerHTML=fs.map((f,i)=>`<button type="button" class="th" data-avi="${i}" style="padding:0;border:3px solid ${i===sel?'var(--accent)':'transparent'};border-radius:12px;background:none;opacity:${i===sel?1:.5}"><img src="${esc(fotoSrc(f))}" alt="Foto ${i+1}"></button>`).join('')};
+  const setZ=()=>{if(zap)zap.href=zapHref(p.telefone,ta.value)};draw();setZ();ta.addEventListener('input',setZ);
+  const marcar=()=>save('ped',id,{...S.ped[id],avaliacaoPedidaEm:new Date().toISOString()});
+  sh.addEventListener('click',async e=>{const t=e.target.closest('[data-avi]');if(t){sel=+t.dataset.avi;draw();return}
+    const b=e.target.closest('[data-av]');if(!b)return;
+    if(b.dataset.av==='zap'){marcar();return}
+    if(sel<0){marcar();window.open(zapHref(p.telefone,ta.value),'_blank','noopener');return}
+    b.disabled=true;const t0=b.textContent;b.textContent='Preparando a foto…';
+    try{const img=await fotoImg(fs[sel]);let file=null;
+      if(img){const cv=await desenharPost(img,'original','nada','');const bl=await new Promise(r=>cv.toBlob(r,'image/jpeg',.92));file=new File([bl],'seu-bolo.jpg',{type:'image/jpeg'})}
+      if(file&&navigator.canShare&&navigator.canShare({files:[file]})){try{await navigator.share({files:[file],text:ta.value});marcar()}catch(er){if(!(er&&er.name==='AbortError'))toast('Não consegui abrir o Compartilhar.')}}
+      else{if(file){const dl=await getDownloads();await dl.save({filename:file.name,data:file})}marcar();window.open(zapHref(p.telefone,ta.value),'_blank','noopener');toast(file?'Foto salva: anexe na conversa.':'Abrindo o WhatsApp')}}
+    finally{b.disabled=false;b.textContent=t0}});
 }
 
 /* ---------- fotos do bolo pronto e post do Instagram ---------- */
@@ -1420,7 +1437,7 @@ function pedidoFinalizado(id){
     <div class="field"><span class="lbl">1. Fotos do bolo</span><div data-galfim></div></div>
     <button class="btn primary" type="button" data-fim="post">2. Criar post para o Instagram</button>
     <button class="btn" type="button" data-fim="card">Colocar nas fotos do cardápio</button>
-    <button class="btn" type="button" data-fim="aval">3. Pedir avaliação no WhatsApp</button>
+    <button class="btn" type="button" data-fim="aval">3. Enviar para o cliente avaliar</button>
   </div>`,2);
   galeriaPedido(sh.querySelector('[data-galfim]'),id);
   sh.addEventListener('click',e=>{const b=e.target.closest('[data-fim]');if(!b)return;const k=b.dataset.fim;
