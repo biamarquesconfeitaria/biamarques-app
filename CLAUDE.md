@@ -90,7 +90,7 @@ Sirva a pasta com qualquer servidor estático (ex.: `npx serve .`). Para trazer 
 
 ## Barra de abas e "Mais"
 
-- Barra: Início, Pedidos, Agenda, Cardápio, Galeria e "Mais" (`data-act="mais"`, `abrirMais`). `NAV_MAIS`: Financeiro, Impostos, Receitas, Ingredientes, Ajustes. Quando a tela atual é do "Mais", o botão mostra o nome dela (em `render()`).
+- Barra: Início, Pedidos, Agenda, Cardápio, Galeria e "Mais" (`data-act="mais"`, `abrirMais`). `NAV_MAIS` ([id, nome, frase, ícone]): Financeiro, Impostos, Receitas, Ingredientes, Ajustes, mostrados como cartões brancos (`.maisitem`) com ícone num quadrado rosa (`ICO_MAIS`), nome e frase, no estilo do "Mais" da DaylinTech. Quando a tela atual é do "Mais", o botão mostra o nome dela (em `render()`).
 
 ## Agenda
 
