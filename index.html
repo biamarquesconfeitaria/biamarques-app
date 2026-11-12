@@ -280,16 +280,17 @@ const DEFAULT_CFG={nome:'Bia Marques Confeitaria',valorHora:25,indiretosPct:10,m
   pagamento:'Pix, transferência, cartão de débito, crédito e link de pagamento (parcelamos até 5x com juros da máquina)',
   decoracaoTxt:'Decoração com glitter, pintura, desenho e escrita flork: valor a consultar, pois depende do tamanho do bolo.',
   infos:['Você pode escolher duas opções de recheio e uma opção de massa.','O pedido só é feito mediante um pagamento de 50% do valor. Caso seja via cartão, enviamos o link de pagamento.','Aceitamos transferências, Pix, cartão de débito, crédito e link de pagamento (parcelamos até 5x com juros da máquina).','Os valores apresentados são iniciais, com recheios e sem topo de bolo. Recheios especiais e tipos de decoração alteram o valor.','Não fazemos entrega. O local de retirada é na Rua Amapá 227, Araras.','Você pode optar por entrega via motorista de aplicativo, porém precisa pedir no seu aplicativo e o transporte é de responsabilidade do cliente.','Não trabalhamos com pronta entrega: pedidos com topo de bolo pedimos 3 dias e pedidos sem topo de bolo pedimos 2 dias.','Horário de retirada: de segunda a sábado das 9h às 18h e domingo das 9h às 12h. Lembrando que é preciso retirar no horário combinado.'].join('\n')};
-const COLS={ing:'ingredientes',rec:'receitas',ped:'pedidos',comp:'componentes',card:'cardapio',gal:'galeria',lan:'lancamentos',compr:'compras'};
-const S={mode:'carregando',loaded:false,note:'',ing:{},rec:{},ped:{},comp:{},card:{},gal:{},lan:{},compr:{},cfg:{...DEFAULT_CFG},db:null};
+const COLS={ing:'ingredientes',rec:'receitas',ped:'pedidos',comp:'componentes',card:'cardapio',gal:'galeria',lan:'lancamentos',compr:'compras',lix:'lixeira'};
+const S={mode:'carregando',loaded:false,note:'',ing:{},rec:{},ped:{},comp:{},card:{},gal:{},lan:{},compr:{},lix:{},cfg:{...DEFAULT_CFG},db:null};
 const LKEY='bia-marques-v1';
 let sb=null,recuperando=false,usuarioEmail='';
 const NUVEM=window.BIA_CONFIG||{};
 const temNuvem=()=>!!(NUVEM.supabaseUrl&&NUVEM.supabaseKey);
 const T_DOCS='bia_docs',BUCKET='bia-fotos';
 
-function loadLocal(){try{const j=JSON.parse(localStorage.getItem(LKEY)||'null');if(j){S.ing=j.ing||{};S.rec=j.rec||{};S.ped=j.ped||{};S.comp=j.comp||{};S.card=j.card||{};S.gal=j.gal||{};S.lan=j.lan||{};S.cfg={...DEFAULT_CFG,...(j.cfg||{})}}}catch(e){}S.loaded=true}
-function saveLocal(){try{localStorage.setItem(LKEY,JSON.stringify({ing:S.ing,rec:S.rec,ped:S.ped,comp:S.comp,card:S.card,gal:S.gal,lan:S.lan,cfg:S.cfg}))}catch(e){toast('Não consegui salvar neste aparelho.')}}
+function loadLocal(){try{const j=JSON.parse(localStorage.getItem(LKEY)||'null');if(j){S.ing=j.ing||{};S.rec=j.rec||{};S.ped=j.ped||{};S.comp=j.comp||{};S.card=j.card||{};S.gal=j.gal||{};S.lan=j.lan||{};S.lix=j.lix||{};S.cfg={...DEFAULT_CFG,...(j.cfg||{})}}}catch(e){}S.loaded=true}
+setTimeout(()=>{if(!temNuvem())limparLixeira()},3000);
+function saveLocal(){try{localStorage.setItem(LKEY,JSON.stringify({ing:S.ing,rec:S.rec,ped:S.ped,comp:S.comp,card:S.card,gal:S.gal,lan:S.lan,lix:S.lix,cfg:S.cfg}))}catch(e){toast('Não consegui salvar neste aparelho.')}}
 
 async function initStore(){
   if(!temNuvem()){S.mode='local';loadLocal();render();return}
@@ -389,7 +390,7 @@ function telaAcesso(tipo){
 function subscribe(){
   let pending=Object.keys(COLS).length+1;
   const timer=setTimeout(()=>{if(pending>0){S.note='Ainda não consegui carregar seus dados. Confira a internet; o app continua tentando.';render()}},10000);
-  const done=()=>{pending--;if(pending<=0){clearTimeout(timer);S.note='';S.loaded=true}};
+  const done=()=>{pending--;if(pending<=0){clearTimeout(timer);S.note='';S.loaded=true;setTimeout(limparLixeira,4000)}};
   Object.entries(COLS).forEach(([k,col])=>{
     let first=true;
     S.db.collection(col).onSnapshot(snap=>{
@@ -412,7 +413,13 @@ async function save(k,id,obj){
   else saveLocal();
   return id;
 }
-async function remove(k,id){
+// excluir manda para a lixeira (5 dias); {definitivo:true} apaga direto
+async function remove(k,id,opt={}){
+  const doc=S[k]&&S[k][id];
+  if(k!=='lix'&&!opt.definitivo&&doc){await save('lix',null,{col:k,docId:id,data:doc,titulo:tituloLixo(k,doc),excluidoEm:new Date().toISOString(),por:usuarioEmail||''})}
+  return removeDireto(k,id);
+}
+async function removeDireto(k,id){
   const m={...S[k]};delete m[id];S[k]=m;render();
   if(S.db){try{await S.db.collection(COLS[k]).doc(id).delete()}catch(e){toast('Não excluiu: '+(e&&e.message||'erro'))}}
   else saveLocal();
@@ -445,7 +452,7 @@ const saldo=p=>Math.max(0,num(p.valor)-num(p.sinal));
 const pedidosOrdenados=()=>Object.entries(S.ped).map(([id,p])=>({id,...p})).sort((a,b)=>(a.entrega||'9999').localeCompare(b.entrega||'9999')||(a.hora||'').localeCompare(b.hora||''));
 
 /* ---------- navegação ---------- */
-const TABS=['inicio','pedidos','agenda','cardapio','galeria','financeiro','impostos','receitas','ingredientes','ajustes'];
+const TABS=['inicio','pedidos','agenda','cardapio','galeria','financeiro','impostos','receitas','ingredientes','ajustes','lixeira'];
 let filtroPed='proximos',buscaIng='',segIng='ing';
 const cur=()=>{const h=location.hash.replace('#','');return TABS.includes(h)?h:'inicio'};
 window.addEventListener('hashchange',()=>{closeSheet(2);closeSheet(1);render();window.scrollTo(0,0)});
@@ -457,7 +464,7 @@ function render(){
   const mb=document.querySelector('#tabs [data-t="mais"] span');if(mb)mb.textContent=naMais?naMais[1]:'Mais';
   if(S.mode==='carregando')return;
   const v=$('#view');
-  const views={inicio:vInicio,pedidos:vPedidos,agenda:vAgenda,financeiro:vFinanceiro,impostos:vImpostos,cardapio:vCardapio,galeria:vGaleria,receitas:vReceitas,ingredientes:vIngredientes,ajustes:vAjustes};
+  const views={inicio:vInicio,pedidos:vPedidos,agenda:vAgenda,lixeira:vLixeira,financeiro:vFinanceiro,impostos:vImpostos,cardapio:vCardapio,galeria:vGaleria,receitas:vReceitas,ingredientes:vIngredientes,ajustes:vAjustes};
   v.innerHTML=(S.note?`<div class="note warn" style="margin-top:8px">${esc(S.note)}</div>`:'')+views[t]();
   if(t==='ajustes')ligarAssinatura();
 }
@@ -653,7 +660,7 @@ function formIng(id,catNovo){
     const usado=Object.values(S.rec).some(r=>(r.itens||[]).some(it=>it.ingId===id));
     const usadoTam=Object.values(S.comp).some(c=>(c.embItens||[]).some(it=>it.ingId===id));
     if((usado||usadoTam)&&!del.classList.contains('armed'))toast(usadoTam?'Atenção: esta embalagem está em um tamanho de bolo.':'Atenção: este ingrediente é usado em receitas.');
-    armDelete(del,()=>{remove('ing',id);closeSheet();toast(emb?'Embalagem excluída':'Ingrediente excluído')})});
+    armDelete(del,()=>{remove('ing',id);closeSheet();toast(`${emb?'Embalagem':'Ingrediente'} foi para a lixeira`)})});
   f.cat.addEventListener('change',()=>{if(f.cat.value==='embalagem'&&f.unidade.value!=='un'){f.unidade.value='un';if(!num(f.qtd.value)||num(f.qtd.value)>=50)f.qtd.value='1';upd()}});
 }
 
@@ -694,7 +701,7 @@ function formRec(id){
     const obj={nome:f.nome.value.trim(),rendimentoKg:num(f.rendimentoKg.value),horas:num(f.horas.value),embalagem:num(f.embalagem.value),itens};
     if(f.margem.value.trim()!=='')obj.margem=num(f.margem.value);
     save('rec',id,obj);closeSheet();toast('Receita salva')});
-  const del=sh.querySelector('#rDel');if(del)del.addEventListener('click',()=>armDelete(del,()=>{remove('rec',id);closeSheet();toast('Receita excluída')}));
+  const del=sh.querySelector('#rDel');if(del)del.addEventListener('click',()=>armDelete(del,()=>{remove('rec',id);closeSheet();toast('Receita foi para a lixeira')}));
 }
 
 /* partes do bolo */
@@ -780,7 +787,7 @@ function formComp(id,tipo,opts={}){
     const m=e.target.closest('[data-m]');if(m){draft.modo=m.dataset.m;sh.querySelectorAll('[data-m]').forEach(b=>b.setAttribute('aria-pressed',b===m));sh.querySelectorAll('[data-box]').forEach(b=>b.hidden=b.dataset.box!==draft.modo);recalc();return}
     if(e.target.closest('[data-addrow]')){draft.itens.push({ingId:'',qtd:''});drawRows();return}
     const rm=e.target.closest('[data-rm]');if(rm){draft.itens.splice(+rm.dataset.rm,1);drawRows();recalc();return}
-    const del=e.target.closest('[data-del]');if(del)armDelete(del,()=>{remove('comp',id);closeSheet(L);toast(`${T.t} excluíd${tipo==='massa'||tipo==='cobertura'?'a':'o'}`)});
+    const del=e.target.closest('[data-del]');if(del)armDelete(del,()=>{remove('comp',id);closeSheet(L);toast(`${T.t} foi para a lixeira`)});
   });
   if(rows){
     rows.addEventListener('change',e=>{const row=e.target.closest('.ingrow');if(!row)return;if(e.target.dataset.k==='ingId'){draft.itens[+row.dataset.i].ingId=e.target.value;drawRows()}recalc()});
@@ -966,7 +973,7 @@ function formPed(id,prefill){
     f.linkPag.value=m[0].replace(/[).,;]+$/,'');f.linkPag.dispatchEvent(new Event('input',{bubbles:true}));toast('Link colado')});
   const pb=sh.querySelector('#pPost');if(pb)pb.addEventListener('click',()=>criarPost(id));
   sh.querySelector('#pZap').addEventListener('click',()=>openEnvio(read(),id));
-  const del=sh.querySelector('#pDel');if(del)del.addEventListener('click',()=>armDelete(del,async()=>{const fts=((S.ped[id]&&S.ped[id].fotos)||[]).filter(f=>typeof f==='string'&&!Object.values(S.card).some(c=>(c.fotos||[]).includes(f))&&!Object.values(S.gal||{}).some(g=>g.foto===f&&!g.oculta));remove('ped',id);closeSheet();toast('Pedido excluído');if(fts.length){const a=await getAssets();if(a)fts.forEach(f=>a.delete(f).catch(()=>{}))}}));
+  const del=sh.querySelector('#pDel');if(del)del.addEventListener('click',()=>armDelete(del,async()=>{limparRascunho();remove('ped',id);closeSheet();toast('Pedido foi para a lixeira (fica 5 dias)')}));
 }
 function msgPedido(p,extra){
   const c=S.cfg;const d=parseD(p.entrega);
@@ -1563,24 +1570,67 @@ function verFotoGaleria(foto){
       it.cardId=cid;toast('Foto colocada no cardápio');closeSheet();return}
     if(k==='del')armDelete(b,async()=>{
       const gs=Object.entries(S.gal||{}).filter(([,g])=>g.foto===foto);
-      if(it.pedId||it.cardId){for(const [gid] of gs)await remove('gal',gid);await save('gal',null,{foto,oculta:true,criado:new Date().toISOString()});toast('Foto tirada da galeria')}
-      else{for(const [gid] of gs)await remove('gal',gid);const a=await getAssets();if(a)a.delete(foto).catch(()=>{});toast('Foto excluída')}
+      if(it.pedId||it.cardId){for(const [gid] of gs)await remove('gal',gid,{definitivo:true});await save('gal',null,{foto,oculta:true,criado:new Date().toISOString()});toast('Foto tirada da galeria')}
+      else{for(const [gid] of gs)await remove('gal',gid);toast('Foto foi para a lixeira')}
       closeSheet()});
   });
 }
 
 /* ---------- menu "Mais" ---------- */
-const NAV_MAIS=[['financeiro','Financeiro','Entradas, despesas e retiradas do mês','fin'],['impostos','Impostos','Guia do MEI, declaração anual e CNPJ','imp'],['receitas','Receitas','Custo e preço sugerido de cada bolo','rec'],['ingredientes','Ingredientes','Preços, embalagens e notas de compra','ing'],['ajustes','Ajustes','Pix, contatos, assinatura e backup','cfg']];
+const NAV_MAIS=[['financeiro','Financeiro','Entradas, despesas e retiradas do mês','fin'],['impostos','Impostos','Guia do MEI, declaração anual e CNPJ','imp'],['receitas','Receitas','Custo e preço sugerido de cada bolo','rec'],['ingredientes','Ingredientes','Preços, embalagens e notas de compra','ing'],['ajustes','Ajustes','Pix, contatos, assinatura e backup','cfg'],['lixeira','Lixeira','Itens excluídos ficam 5 dias para restaurar','lix']];
 const ICO_MAIS={
   fin:'<rect x="3" y="6" width="18" height="13" rx="2.5"/><path d="M3 10h18"/><circle cx="16" cy="14.5" r="1.4"/>',
   imp:'<path d="M7 3h10a1 1 0 0 1 1 1v17l-3-2-3 2-3-2-3 2V4a1 1 0 0 1 1-1z"/><path d="M9 8h6M9 12h6M9 16h3"/>',
   rec:'<path d="M6 3h11a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M8 3v18M11 8h4M11 12h4"/>',
   ing:'<path d="M8 3h8v3H8zM7 6h10l1 3v10a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V9z"/><path d="M6 12h12"/>',
+  lix:'<path d="M4 7h16M10 11v6M14 11v6M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/>',
   cfg:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>'};
 function abrirMais(){
   const t=cur();
   const sh=openSheet('Mais',`<div class="maislist">${NAV_MAIS.map(([k,n,d,ic])=>`<a class="maisitem${k===t?' on':''}" href="#${k}" data-maisir><span class="maisico"><svg viewBox="0 0 24 24" aria-hidden="true">${ICO_MAIS[ic]}</svg></span><span class="maistx"><b>${n}</b><small>${d}</small></span></a>`).join('')}</div>`);
   sh.addEventListener('click',e=>{if(e.target.closest('[data-maisir]'))closeSheet()});
+}
+
+/* ---------- lixeira ---------- */
+const LIX_DIAS=5;
+function tituloLixo(k,d){
+  const n=x=>String(x||'').trim();
+  if(k==='ped')return`${d.status==='orcamento'?'Orçamento':'Pedido'} · ${n(d.cliente)||'sem nome'}${d.entrega?' · '+fmtData(d.entrega):''}${num(d.valor)?' · '+brl(d.valor):''}`;
+  if(k==='card')return`Bolo do cardápio · ${n(d.nome)}`;
+  if(k==='ing')return`${d.cat==='embalagem'?'Embalagem':'Ingrediente'} · ${n(d.nome)}`;
+  if(k==='rec')return`Receita · ${n(d.nome)}`;
+  if(k==='comp')return`${(TIPOS[d.tipo]||{t:'Item'}).t} · ${n(d.nome)}`;
+  if(k==='lan')return`Lançamento · ${n(d.desc)||(FIN_CATS[d.cat]||[''])[0]} · ${brl(d.valor)}`;
+  if(k==='gal')return`Foto da galeria${d.titulo?' · '+n(d.titulo):''}`;
+  return'Item excluído';
+}
+const fotosDoLixo=it=>{const d=it.data||{};return[...(Array.isArray(d.fotos)?d.fotos:[]),d.foto].filter(f=>typeof f==='string'&&f)};
+const fotoEmUso=f=>Object.values(S.ped).some(p=>Array.isArray(p.fotos)&&p.fotos.includes(f))||Object.values(S.card).some(c=>(c.fotos||[]).includes(f))||Object.values(S.gal||{}).some(g=>g.foto===f)||Object.values(S.lan||{}).some(l=>(l.fotos||[]).includes(f))||Object.values(S.lix||{}).some(x=>fotosDoLixo(x).includes(f));
+async function apagarDeVez(lid){
+  const it=S.lix[lid];if(!it)return;const fs=fotosDoLixo(it);
+  await removeDireto('lix',lid);
+  const livres=fs.filter(f=>!fotoEmUso(f));if(livres.length){const a=await getAssets();if(a)livres.forEach(f=>a.delete(f).catch(()=>{}))}
+}
+async function restaurar(lid){
+  const it=S.lix[lid];if(!it||!COLS[it.col])return;
+  const id=it.docId&&!(S[it.col]||{})[it.docId]?it.docId:null;
+  await save(it.col,id,it.data);await removeDireto('lix',lid);toast('Restaurado: '+(it.titulo||'item'));
+}
+let lixLimpa=false;
+function limparLixeira(){if(lixLimpa||!S.loaded)return;lixLimpa=true;const lim=Date.now()-LIX_DIAS*864e5;
+  Object.entries(S.lix||{}).filter(([,x])=>new Date(x.excluidoEm).getTime()<lim).forEach(([lid])=>apagarDeVez(lid))}
+const diasRestam=x=>Math.max(0,Math.ceil((new Date(x.excluidoEm).getTime()+LIX_DIAS*864e5-Date.now())/864e5));
+function vLixeira(){
+  const its=Object.entries(S.lix||{}).map(([lid,x])=>({lid,...x})).sort((a,b)=>String(b.excluidoEm).localeCompare(String(a.excluidoEm)));
+  const fd=iso=>{const d=new Date(iso);return isNaN(d)?'':`${pad(d.getDate())}/${pad(d.getMonth()+1)} às ${pad(d.getHours())}h${pad(d.getMinutes())}`};
+  return`<header class="top"><div><div class="eyebrow">Itens excluídos</div><h1>Lixeira</h1></div></header>
+  <p class="muted" style="margin:0 0 12px">O que for excluído fica aqui por ${LIX_DIAS} dias e pode ser restaurado. Depois disso some sozinho, de vez.</p>
+  ${its.length?`<div class="list">${its.map(x=>{const d=diasRestam(x),fs=fotosDoLixo(x);return`<div class="item static" style="flex-wrap:wrap;gap:10px">
+    ${fs[0]?`<img src="${esc(blobUrl(fs[0]))}" alt="" style="width:52px;height:52px;object-fit:cover;border-radius:10px">`:''}
+    <div class="main" style="min-width:60%"><div class="t" style="white-space:normal">${esc(x.titulo||'Item excluído')}</div><div class="s">Excluído em ${esc(fd(x.excluidoEm))}${x.por?' por '+esc(x.por.split('@')[0]):''} · ${d<=0?'some hoje':d===1?'some amanhã':`some em ${d} dias`}</div></div>
+    <div class="row" style="gap:8px;width:100%"><button class="btn primary" data-lixrest="${esc(x.lid)}" style="flex:1">Restaurar</button><button class="btn danger" data-lixdel="${esc(x.lid)}" style="flex:1">Excluir de vez</button></div></div>`}).join('')}</div>
+    <button class="btn danger block" data-act="lixEsvaziar" style="margin-top:16px">Esvaziar lixeira</button>`
+  :'<div class="empty"><strong>Lixeira vazia</strong>Quando alguém excluir um pedido, orçamento, bolo, foto ou lançamento, ele aparece aqui.</div>'}`;
 }
 
 /* ---------- agenda ---------- */
@@ -1685,7 +1735,7 @@ function formLanc(id,tipo0){
       toast(`Lançado em ${np} parcelas`)}
     else{await save('lan',id,{...(id?l:{}),...base});toast('Lançamento salvo')}
     closeSheet()});
-  const del=sh.querySelector('[data-del]');if(del)del.addEventListener('click',()=>armDelete(del,async()=>{await remove('lan',id);closeSheet();toast('Lançamento excluído');const a=await getAssets();if(a)(l.fotos||[]).forEach(x=>a.delete(x).catch(()=>{}))}));
+  const del=sh.querySelector('[data-del]');if(del)del.addEventListener('click',()=>armDelete(del,async()=>{await remove('lan',id);closeSheet();toast('Lançamento foi para a lixeira')}));
 }
 function abrirMov(key){
   const i=key.indexOf(':'),src=key.slice(0,i),id=key.slice(i+1);
@@ -2525,7 +2575,7 @@ function formTam(id,opts={}){
     const nid=id||uid();
     save('comp',nid,{...(id?S.comp[id]:{}),tipo:'tamanho',nome:f.nome.value.trim(),fatias:num(f.fatias.value),preco:num(f.preco.value),consultar:f.consultar.checked,pesoKg:num(f.pesoKg.value),adicEspecial:num(f.adicEspecial.value),embItens:embItens()});
     closeSheet(L);toast('Tamanho salvo');if(opts.onSaved)opts.onSaved(nid)});
-  const del=sh.querySelector('[data-del]');if(del)del.addEventListener('click',()=>armDelete(del,()=>{remove('comp',id);closeSheet(L);toast('Tamanho excluído')}));
+  const del=sh.querySelector('[data-del]');if(del)del.addEventListener('click',()=>armDelete(del,()=>{remove('comp',id);closeSheet(L);toast('Tamanho foi para a lixeira')}));
 }
 const itensCardapio=()=>Object.entries(S.card).map(([id,c])=>({id,...c})).sort((a,b)=>(a.categoria||'').localeCompare(b.categoria||'')||(a.nome||'').localeCompare(b.nome||''));
 function composicao(it){return[nomeComp(it.massaId),(it.recheioIds||[]).map(nomeComp).filter(Boolean).join(' e '),nomeComp(it.coberturaId)].filter(Boolean).join(' · ')}
@@ -2603,7 +2653,7 @@ function formCard(id){
       drawPills();return}
     if(e.target.closest('[data-pedir]')){const x=S.card[id];closeSheet();formPed(null,{cardapioId:id,tamanhoId:x.tamanhoId||'',massaId:x.massaId||'',recheioIds:(x.recheioIds||[]).slice(),coberturaId:x.coberturaId||'',descricao:`Igual à foto: ${x.nome}`});return}
     if(e.target.closest('[data-img]')){imagemBolo(id);return}
-    const del=e.target.closest('[data-del]');if(del)armDelete(del,async()=>{const old=(S.card[id]&&S.card[id].fotos)||[];remove('card',id);closeSheet();toast('Bolo removido');const a=await getAssets();if(a)old.filter(f=>!fotoNaGaleriaOuPedido(f)).forEach(fid=>a.delete(fid).catch(()=>{}))});
+    const del=e.target.closest('[data-del]');if(del)armDelete(del,async()=>{remove('card',id);closeSheet();toast('Bolo foi para a lixeira')});
   });
   f.addEventListener('input',e=>{if(e.target.name==='catOutra'&&e.target.value.trim()){st.categoria=e.target.value.trim();drawCats()}});
   f.addEventListener('submit',async e=>{e.preventDefault();
@@ -2771,7 +2821,9 @@ async function imagemPronta(cv,filename){
 
 /* ---------- eventos globais ---------- */
 document.addEventListener('click',e=>{
-  const t=e.target.closest('[data-agdia],[data-agmes],[data-agnovo],[data-finmes],[data-fin],[data-finfil],[data-mov],[data-daspaguei],[data-dasdesf],[data-fxlink],[data-galfoto],[data-galcat],[data-act],[data-ped],[data-rec],[data-ing],[data-filtro],[data-seg],[data-comp],[data-card],[data-cat],[data-tam],[data-segc],[data-goto]');if(!t)return;
+  const t=e.target.closest('[data-lixrest],[data-lixdel],[data-agdia],[data-agmes],[data-agnovo],[data-finmes],[data-fin],[data-finfil],[data-mov],[data-daspaguei],[data-dasdesf],[data-fxlink],[data-galfoto],[data-galcat],[data-act],[data-ped],[data-rec],[data-ing],[data-filtro],[data-seg],[data-comp],[data-card],[data-cat],[data-tam],[data-segc],[data-goto]');if(!t)return;
+  if(t.dataset.lixrest)return restaurar(t.dataset.lixrest);
+  if(t.dataset.lixdel){armDelete(t,()=>{apagarDeVez(t.dataset.lixdel);toast('Excluído de vez')});return}
   if(t.dataset.agdia){ag.dia=t.dataset.agdia;return render()}
   if(t.dataset.agmes){ag.mes+=+t.dataset.agmes;if(ag.mes<0){ag.mes=11;ag.ano--}if(ag.mes>11){ag.mes=0;ag.ano++}ag.dia='';return render()}
   if(t.dataset.agnovo)return formPed(null,{entrega:t.dataset.agnovo});
@@ -2802,6 +2854,7 @@ document.addEventListener('click',e=>{
   if(a==='rascDescartar'){limparRascunho();return render()}
   if(a==='opCartao')return escolherOperadora();
   if(a==='finCsv')return finCsv();
+  if(a==='lixEsvaziar'){armDelete(t,()=>{Object.keys(S.lix||{}).forEach(apagarDeVez);toast('Lixeira esvaziada')});return}
   if(a==='fxConsultar')return consultarCnpj();
   if(a==='fxCopiar')return copiarCnpj();
   if(a==='fxPgmei'){copiarCnpj(true);return}
@@ -2825,7 +2878,7 @@ document.addEventListener('click',e=>{
   if(a==='imgCardapio')return imagemCardapio();
   if(a==='txtCardapio')return textoCardapio();
   if(a==='sair'){if(sb)sb.auth.signOut();return}
-  if(a==='backup'){const j=JSON.stringify({app:'bia-marques',versao:1,exportadoEm:new Date().toISOString(),ingredientes:S.ing,componentes:S.comp,cardapio:S.card,galeria:S.gal,lancamentos:S.lan,compras:S.compr,receitas:S.rec,pedidos:S.ped,config:{geral:S.cfg}},null,1);getDownloads().then(d=>d.save({filename:`backup-bia-marques-${isoD(new Date())}.json`,data:new Blob([j],{type:'application/json'})}));toast('Backup baixado');return}
+  if(a==='backup'){const j=JSON.stringify({app:'bia-marques',versao:1,exportadoEm:new Date().toISOString(),ingredientes:S.ing,componentes:S.comp,cardapio:S.card,galeria:S.gal,lancamentos:S.lan,compras:S.compr,lixeira:S.lix,receitas:S.rec,pedidos:S.ped,config:{geral:S.cfg}},null,1);getDownloads().then(d=>d.save({filename:`backup-bia-marques-${isoD(new Date())}.json`,data:new Blob([j],{type:'application/json'})}));toast('Backup baixado');return}
   if(a==='backupTexto'){const j=JSON.stringify({ingredientes:S.ing,massasRecheiosCoberturas:S.comp,cardapio:S.card,receitas:S.rec,pedidos:S.ped,ajustes:S.cfg});try{navigator.clipboard.writeText(j).then(()=>toast('Backup copiado. Cole numa nota para guardar.'),()=>toast('Não consegui copiar neste aparelho.'))}catch(err){toast('Não consegui copiar neste aparelho.')}}
 });
 document.addEventListener('submit',e=>{
@@ -2839,14 +2892,14 @@ document.addEventListener('change',e=>{if(e.target.dataset&&e.target.dataset.fx=
   if(e.target.id==='rsFile'){const f=e.target.files&&e.target.files[0];e.target.value='';if(f)restaurarBackup(f)}});
 async function restaurarBackup(file){
   let j;try{j=JSON.parse(await file.text())}catch(er){toast('Esse arquivo não é um backup do app.');return}
-  const m={ingredientes:j.ingredientes||{},componentes:j.componentes||j.massasRecheiosCoberturas||{},cardapio:j.cardapio||{},galeria:j.galeria||{},lancamentos:j.lancamentos||{},compras:j.compras||{},receitas:j.receitas||{},pedidos:j.pedidos||{},config:j.config||(j.ajustes?{geral:j.ajustes}:{})};
+  const m={ingredientes:j.ingredientes||{},componentes:j.componentes||j.massasRecheiosCoberturas||{},cardapio:j.cardapio||{},galeria:j.galeria||{},lancamentos:j.lancamentos||{},compras:j.compras||{},lixeira:j.lixeira||{},receitas:j.receitas||{},pedidos:j.pedidos||{},config:j.config||(j.ajustes?{geral:j.ajustes}:{})};
   const n=Object.keys(m.pedidos).length,ni=Object.keys(m.ingredientes).length,nc=Object.keys(m.componentes).length;
   if(!n&&!ni&&!nc&&!Object.keys(m.cardapio).length){toast('Esse backup está vazio.');return}
   const sh=openSheet('Restaurar backup',`<div class="stack"><p style="margin:0">Este backup tem <b>${n} pedidos</b>, <b>${ni} ingredientes</b>, <b>${nc} massas, recheios, coberturas, tamanhos e toppers</b>, ${Object.keys(m.cardapio).length} bolos no cardápio e ${Object.keys(m.receitas).length} receitas.</p><p class="muted" style="margin:0">O que tiver o mesmo item no app será trocado pelo do backup. O resto fica como está.</p><button class="btn primary" type="button" data-ok>Restaurar</button></div>`);
   sh.querySelector('[data-ok]').addEventListener('click',async ev=>{ev.target.disabled=true;ev.target.textContent='Restaurando…';
     try{
       if(S.db&&S.db.importar)await S.db.importar(m);
-      else{const k={ingredientes:'ing',componentes:'comp',cardapio:'card',galeria:'gal',lancamentos:'lan',compras:'compr',receitas:'rec',pedidos:'ped'};Object.entries(k).forEach(([c,kk])=>{S[kk]={...S[kk],...m[c]}});if(m.config.geral)S.cfg={...DEFAULT_CFG,...m.config.geral};saveLocal();render()}
+      else{const k={ingredientes:'ing',componentes:'comp',cardapio:'card',galeria:'gal',lancamentos:'lan',compras:'compr',lixeira:'lix',receitas:'rec',pedidos:'ped'};Object.entries(k).forEach(([c,kk])=>{S[kk]={...S[kk],...m[c]}});if(m.config.geral)S.cfg={...DEFAULT_CFG,...m.config.geral};saveLocal();render()}
       closeSheet();toast('Backup restaurado');
     }catch(er){ev.target.disabled=false;ev.target.textContent='Restaurar';toast('Não consegui restaurar. Confira a internet e tente de novo.')}});
 }

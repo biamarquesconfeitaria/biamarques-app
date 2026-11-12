@@ -124,3 +124,10 @@ Sirva a pasta com qualquer servidor estático (ex.: `npx serve .`). Para trazer 
 
 - `pedirAvaliacao(id)` ("Enviar para o cliente avaliar", no pedido entregue e no pedido finalizado): escolhe uma das fotos do bolo (`fotosDe`) e manda pelo Compartilhar a foto (sem logo) + mensagem (`textoAvaliacao(p, comFoto)`) com o link de avaliação. Sem Web Share: salva a foto e abre o WhatsApp do cliente. Grava `avaliacaoPedidaEm`.
 - O Google não deixa um link já trazer a foto dentro da avaliação: a mensagem pede para o cliente tocar em "Adicionar fotos". O melhor link é o "Pedir avaliações" do Perfil da Empresa (g.page/r/…/review), que abre direto as estrelas; os links share.google salvos em Ajustes (nov/2026) abrem a busca do Google com o perfil.
+
+## Lixeira
+
+- `remove(k, id)` não apaga direto: grava uma cópia em `lixeira` (`S.lix`: `{col, docId, data, titulo, excluidoEm, por}`) e depois apaga (`removeDireto`). `remove(k, id, {definitivo:true})` pula a lixeira (usado em "Tirar da galeria", que não é exclusão).
+- Vale para pedidos/orçamentos, cardápio, ingredientes/embalagens, receitas, tamanhos/massas/recheios/toppers, lançamentos e fotos da galeria. As exclusões não apagam mais as fotos do bucket na hora; `apagarDeVez` apaga a cópia e as fotos que não estão em uso em lugar nenhum (`fotoEmUso`).
+- Tela Mais → Lixeira (`vLixeira`): título (`tituloLixo`), quando e quem excluiu, dias que faltam, "Restaurar" (`restaurar`, volta com o mesmo id se estiver livre), "Excluir de vez" e "Esvaziar lixeira".
+- `limparLixeira()` apaga sozinho o que tem mais de `LIX_DIAS` (5) dias, uma vez por abertura do app, depois de carregar os dados.
