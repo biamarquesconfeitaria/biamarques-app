@@ -131,3 +131,7 @@ Sirva a pasta com qualquer servidor estático (ex.: `npx serve .`). Para trazer 
 - Vale para pedidos/orçamentos, cardápio, ingredientes/embalagens, receitas, tamanhos/massas/recheios/toppers, lançamentos e fotos da galeria. As exclusões não apagam mais as fotos do bucket na hora; `apagarDeVez` apaga a cópia e as fotos que não estão em uso em lugar nenhum (`fotoEmUso`).
 - Tela Mais → Lixeira (`vLixeira`): título (`tituloLixo`), quando e quem excluiu, dias que faltam, "Restaurar" (`restaurar`, volta com o mesmo id se estiver livre), "Excluir de vez" e "Esvaziar lixeira".
 - `limparLixeira()` apaga sozinho o que tem mais de `LIX_DIAS` (5) dias, uma vez por abertura do app, depois de carregar os dados.
+
+## Duplicar pedido
+
+- No pedido salvo, "Duplicar" (`#pDup`): abre um pedido novo (`formPed(null, cópia)`) com o que está no formulário (cliente, data, bolo, sabores, detalhes, valor), mas como Orçamento e sem pagamentos, sinal, fotos, link, aceite, avaliação/post e `criado`. Só grava quando a Bia toca em Salvar.

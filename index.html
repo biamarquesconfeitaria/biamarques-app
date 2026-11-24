@@ -868,7 +868,7 @@ function formPed(id,prefill){
     ${id?`<h3 class="sub">Fotos do bolo pronto</h3><div class="field" data-galped></div><button class="btn" type="button" id="pPost">Criar post para o Instagram</button>`:''}
     <div class="field"><label for="pStatus">Situação</label><select id="pStatus" name="status">${Object.entries(STATUS).map(([k,v])=>`<option value="${k}" ${k===p.status?'selected':''}>${v.t}</option>`).join('')}</select></div>
     <div class="field"><label for="pObs">Anotações</label><textarea id="pObs" name="obs" placeholder="Alergias, quem vai retirar…">${esc(p.obs)}</textarea></div>
-    <div class="actions"><button class="btn primary" type="submit">Salvar pedido</button><button class="btn" type="button" id="pZap">Enviar via WhatsApp</button>${id&&p.status==='entregue'?`<button class="btn" type="button" id="pAval">${p.avaliacaoPedidaEm?'Pedir avaliação de novo':'Enviar para o cliente avaliar'}</button>`:''}${id?'<button class="btn danger" type="button" id="pDel">Excluir pedido</button>':''}</div>
+    <div class="actions"><button class="btn primary" type="submit">Salvar pedido</button><button class="btn" type="button" id="pZap">Enviar via WhatsApp</button>${id?'<button class="btn" type="button" id="pDup">Duplicar</button>':''}${id&&p.status==='entregue'?`<button class="btn" type="button" id="pAval">${p.avaliacaoPedidaEm?'Pedir avaliação de novo':'Enviar para o cliente avaliar'}</button>`:''}${id?'<button class="btn danger" type="button" id="pDel">Excluir pedido</button>':''}</div>
   </form>`);
   const f=sh.querySelector('form');
   const pgsBox=sh.querySelector('[data-pgs]');
@@ -959,6 +959,10 @@ function formPed(id,prefill){
     if(st.topper&&!st.topperId){toast('Escolha o tipo de topo de bolo ou marque “Não”.');return}
     const d=read(),antes=id&&S.ped[id]?S.ped[id].status:'';limparRascunho();
     save('ped',id,d).then(nid=>{if(d.status==='entregue'&&antes!=='entregue')pedidoFinalizado(nid)});closeSheet();toast('Pedido salvo')});
+  const dup=sh.querySelector('#pDup');if(dup)dup.addEventListener('click',()=>{
+    const c={...read()};['pagamentos','fotos','linkToken','aceite','linkVistoEm','avaliacaoPedidaEm','postEm','criado','cardapioId'].forEach(k=>delete c[k]);
+    c.sinal='';c.status='orcamento';c.pagamentos=[];c.fotos=[];c.linkToken='';c.aceite=null;c.linkVistoEm='';
+    closeSheet();setTimeout(()=>{formPed(null,c);toast('Cópia do pedido: confira a data e o cliente e toque em Salvar')},60)});
   const avb=sh.querySelector('#pAval');if(avb)avb.addEventListener('click',()=>pedirAvaliacao(id));
   const gp=sh.querySelector('[data-galped]');if(gp)galeriaPedido(gp,id);
   pedAberto={id,read,nome:()=>f.cliente.value.trim()};
