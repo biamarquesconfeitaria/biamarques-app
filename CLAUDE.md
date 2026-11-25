@@ -140,3 +140,10 @@ Sirva a pasta com qualquer servidor estático (ex.: `npx serve .`). Para trazer 
 
 - Nada de "lookbehind" em expressão regular (`(?<!…)` / `(?<=…)`): o Safari só aceita a partir do iOS 16.4 e, antes disso, o erro de sintaxe impede o app inteiro de abrir (aconteceu em nov/2026 com a leitura de nota). A leitura de nota usa `decsDe`, `tiraDecs` e `antesDoPreco` no lugar.
 - Evitar também `?.` e `??` (iOS 13.4+). Hoje o script principal passa no acorn com `ecmaVersion: 2018` (iOS 12+). Conferir antes de publicar mudanças grandes.
+
+## Vários bolos no mesmo orçamento
+
+- O 1º bolo é o do formulário (campos de sempre); os outros ficam em `p.outrosBolos` (`[{tamanhoId, valorBolo, massaId, recheioIds, coberturaId, topper, topperId, adicEspecial, decoracoes, extras, descricao, bolo:{tamanho, fatias, massa, recheios, cobertura, topper, decoracoes}}]`). `outrosDe(p)`, `nBolos(p)`.
+- No pedido: "Mais bolos neste orçamento" + "Adicionar outro bolo" (`formBoloExtra`, folha 2, com o mesmo jeito de escolher tamanho, massa, recheios, cobertura, topo, decoração e detalhes). Tocar no bolo da lista edita ou tira.
+- `calcUm(d)` calcula um bolo; `calcPedido(d)` soma o 1º com os outros (total, custos, horas e embalagem de cada tamanho) e devolve `outros` (cálculo de cada um) e `totalPrincipal`.
+- `itensPedido(p)` (via `itensDeBolo`) monta as linhas "Bolo 1 · Bolo P", "Bolo 2 · Bolo M"… usadas no orçamento em PDF/imagem e na página do link (`dados.itens`, `dados.nBolos`); o texto do WhatsApp lista *Bolo 1*, *Bolo 2*. `resumoBolo` mostra "+ 1 bolo"; o recibo diz "do pedido de 2 bolos"; a Agenda conta bolos (não pedidos) para o dia cheio.

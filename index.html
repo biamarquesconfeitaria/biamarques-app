@@ -711,11 +711,11 @@ const precoTam=t=>t.consultar?'Consultar valor':brl(t.preco);
 function custoLote(c,IM){IM=IM||S.ing;let t=0;(c.itens||[]).forEach(it=>{const g=IM[it.ingId];if(g&&num(g.qtd))t+=num(g.preco)/num(g.qtd)*num(it.qtd)});return t}
 function custoKgComp(c,IM){if(!c)return 0;if(c.modo==='manual')return num(c.custoKg);const kg=num(c.rendeKg);return kg?custoLote(c,IM)/kg:0}
 const nomeComp=id=>(S.comp[id]&&S.comp[id].nome)||'';
-function resumoBolo(p){const b=p.bolo;if(!b)return'';return[b.tamanho,b.massa,(b.recheios||[]).join(' e '),b.cobertura,b.topper].filter(Boolean).join(' · ')}
+function resumoBolo(p){const r=resumoBoloObj(p.bolo);const n=outrosDe(p).length;return n?`${r||'Bolo'} + ${n} bolo${n>1?'s':''}`:r}
 function custoEmbTam(t,IM){IM=IM||S.ing;let s=0;(t&&t.embItens||[]).forEach(it=>{const g=IM[it.ingId];if(g&&num(g.qtd))s+=num(g.preco)/num(g.qtd)*(num(it.qtd)||1)});return Math.round(s*100)/100}
 const temEmbTam=t=>!!(t&&(t.embItens||[]).some(it=>S.ing[it.ingId]));
 const embPadrao=t=>temEmbTam(t)?custoEmbTam(t):num(S.cfg.embalagemPadrao);
-function calcPedido(d){
+function calcUm(d){
   const tam=S.comp[d.tamanhoId];
   const m=S.comp[d.massaId],cob=S.comp[d.coberturaId];
   const recs=(d.recheioIds||[]).map(id=>S.comp[id]).filter(Boolean);
@@ -735,6 +735,38 @@ function calcPedido(d){
   const custo=ing+ind+emb;
   const semCusto=[m,...recs,cob].filter(c=>c&&!custoKgComp(c)).map(c=>c.nome);
   return{tam,consultar,base,temEsp,adic,top,deco,total,ok:!!tam&&base>0,peso,cm,cr,cc,ing,ind,horas,mo,emb,custo,semCusto,nRec:recs.length};
+}
+// pedido com mais de um bolo: o 1º é o do formulário; os outros ficam em d.outrosBolos
+const outrosDe=d=>Array.isArray(d&&d.outrosBolos)?d.outrosBolos:[];
+const nBolos=p=>1+outrosDe(p).length;
+function calcPedido(d){
+  const c=calcUm(d),os=outrosDe(d);
+  if(!os.length)return Object.assign({},c,{outros:[],totalPrincipal:c.total});
+  const r=Object.assign({},c,{outros:[],totalPrincipal:c.total,semCusto:c.semCusto.slice()});
+  os.forEach(o=>{const co=calcUm(Object.assign({},o,{horas:'',embalagem:''}));r.outros.push(co);
+    ['total','ing','ind','emb','mo','horas','custo','peso'].forEach(k=>{r[k]+=co[k]});co.semCusto.forEach(n=>{if(r.semCusto.indexOf(n)<0)r.semCusto.push(n)})});
+  r.total=Math.round(r.total*100)/100;return r;
+}
+function resumoBoloObj(b){b=b||{};return[b.tamanho,b.massa,(b.recheios||[]).join(' e '),b.cobertura,b.topper].filter(Boolean).join(' · ')}
+// linhas do bolo para o orçamento, a página do link e o texto
+function itensDeBolo(b,cc,desc,n){
+  b=b||{};const it=[];
+  if(b.tamanho)it.push({t:(n?`Bolo ${n} · `:'')+b.tamanho,sub:b.fatias?`Rende ${fmt(b.fatias)} fatias`:'',v:cc&&cc.tam?brl(cc.base):'',cab:!!n});
+  else if(n)it.push({t:`Bolo ${n}`,cab:true});
+  const sabor=[b.massa?`Massa ${b.massa.toLowerCase()}`:'',b.recheios&&b.recheios.length?`recheio de ${b.recheios.join(' e ').toLowerCase()}`:'',b.cobertura?`cobertura de ${b.cobertura.toLowerCase()}`:''].filter(Boolean).join(', ');
+  if(sabor)it.push({t:'Sabor',sub:sabor.charAt(0).toUpperCase()+sabor.slice(1)});
+  if(cc&&cc.adic)it.push({t:'Recheio especial',v:`+ ${brl(cc.adic)}`});
+  if(b.topper)it.push({t:`Topo de bolo ${b.topper}`,v:cc&&cc.top?`+ ${brl(cc.top)}`:''});
+  if((b.decoracoes&&b.decoracoes.length)||(cc&&cc.deco))it.push({t:`Decoração${b.decoracoes&&b.decoracoes.length?': '+b.decoracoes.join(', '):''}`,v:cc&&cc.deco?`+ ${brl(cc.deco)}`:''});
+  if(desc)it.push({t:'Detalhes',sub:desc});
+  return it;
+}
+function itensPedido(p,calc){
+  calc=calc||calcPedido(p);const os=outrosDe(p),multi=os.length>0;
+  let it=itensDeBolo(p.bolo,calc,p.descricao,multi?1:0);
+  if(!multi&&!(p.bolo&&p.bolo.tamanho)&&p.pesoKg)it.unshift({t:`Bolo de ${fmt(p.pesoKg)} kg`});
+  os.forEach((o,i)=>{it=it.concat(itensDeBolo(o.bolo,calc.outros[i],o.descricao,i+2))});
+  return it;
 }
 function vComps(tipo){
   const cs=compsDe(tipo);const T=TIPOS[tipo];
@@ -815,7 +847,7 @@ function avisosPedido(d){
     if(k>=0&&k<min)out.push(`Prazo curto: pedidos ${d.topper?'com':'sem'} topo de bolo pedem ${fmt(min)} dias de antecedência.`);
     if(k<0)out.push('Essa data já passou.');
   }
-  if(d.entrega&&ATIVO(d.status)){const outros=Object.entries(S.ped).filter(([pid,x])=>x.entrega===d.entrega&&x.status!=='cancelado'&&x.status!=='orcamento'&&x!==d&&pid!==d._id).length;if(outros>=capDia())out.push(`Agenda cheia nesse dia: já tem ${outros} bolo${outros>1?'s':''} (limite ${capDia()}).`)}
+  if(d.entrega&&ATIVO(d.status)){const outros=Object.entries(S.ped).filter(([pid,x])=>x.entrega===d.entrega&&x.status!=='cancelado'&&x.status!=='orcamento'&&x!==d&&pid!==d._id).reduce((s,[,x])=>s+nBolos(x),0)+nBolos(d)-1;if(outros>=capDia())out.push(`Agenda cheia nesse dia: já tem ${outros} bolo${outros>1?'s':''} (limite ${capDia()}).`)}
   if(d.hora&&d.entrega){const dt=parseD(d.entrega);if(dt){const dom=dt.getDay()===0;const fx=parseFaixa(dom?S.cfg.horarioDom:S.cfg.horarioSem);if(fx&&(d.hora<fx[0]||d.hora>fx[1]))out.push(`Fora do horário de retirada (${dom?'domingo':'segunda a sábado'}: ${dom?S.cfg.horarioDom:S.cfg.horarioSem}).`)}}
   return out;
 }
@@ -847,6 +879,9 @@ function formPed(id,prefill){
     <div class="field"><span class="lbl">Decoração</span><div class="pills" data-grp="deco"></div></div>
     <div class="field" data-box="deco"><label for="pExt">Valor da decoração e extras (R$)</label><input id="pExt" name="extras" inputmode="decimal" value="${inVal(p.extras)}" placeholder="0,00"></div>
     <div class="field"><label for="pDesc">Detalhes e tema</label><textarea id="pDesc" name="descricao" placeholder="Tema, cores, nome e idade, escrita no bolo…">${esc(p.descricao)}</textarea></div>
+    <h3 class="sub">Mais bolos neste orçamento</h3>
+    <div class="field" data-outros></div>
+    <button class="btn" type="button" id="pAddBolo">+ Adicionar outro bolo</button>
     <h3 class="sub">Valor</h3>
     <div class="calc" id="pCalc"></div>
     <div class="grid2">
@@ -882,6 +917,13 @@ function formPed(id,prefill){
   if(pgsBox){drawPgs();pgsBox.addEventListener('atualizar',()=>{drawPgs();upd()});
     pgsBox.addEventListener('click',e=>{const r=e.target.closest('[data-recibo]');if(r){verRecibo(id,r.dataset.recibo);return}
       if(e.target.closest('[data-regpg]')){const d=read();if(num(d.valor)!==num(S.ped[id].valor)){save('ped',id,{...S.ped[id],...d})}formPagamento(id,()=>{drawPgs();upd()})}})}
+  let outros=outrosDe(p).map(o=>Object.assign({},o));
+  const boxOutros=sh.querySelector('[data-outros]');
+  const drawOutros=()=>{boxOutros.innerHTML=outros.length?`<div class="list">${outros.map((o,i)=>{const cc=calcUm(o);return`<button type="button" class="item" data-outro="${i}"><div class="main"><div class="t">Bolo ${i+2}${o.bolo&&o.bolo.tamanho?' · '+esc(o.bolo.tamanho):''}</div><div class="s">${esc([resumoBoloObj(o.bolo).split(' · ').slice(1).join(' · '),o.descricao].filter(Boolean).join(' · ')||'Toque para escolher')}</div></div><div class="end"><b>${brl(cc.total)}</b></div></button>`}).join('')}</div>`:'<small class="muted">Só um bolo. Se o cliente quiser dois ou mais, toque em “Adicionar outro bolo”.</small>'};
+  drawOutros();
+  sh.querySelector('#pAddBolo').addEventListener('click',()=>formBoloExtra(null,o=>{outros.push(o);drawOutros();upd()}));
+  boxOutros.addEventListener('click',e=>{const b=e.target.closest('[data-outro]');if(!b)return;const i=+b.dataset.outro;
+    formBoloExtra(outros[i],o=>{outros[i]=o;drawOutros();upd()},()=>{outros.splice(i,1);drawOutros();upd()},i+2)});
   const pill=(grp,cid,label,on)=>`<button type="button" class="pill" data-pick="${grp}" data-id="${esc(cid)}" aria-pressed="${on}">${label}</button>`;
   const addPill=tipo=>`<button type="button" class="pill add" data-add="${tipo}">+ ${TIPOS[tipo].add}</button>`;
   const drawPills=()=>{
@@ -901,7 +943,7 @@ function formPed(id,prefill){
     adicEspecial:f.adicEspecial.value.trim()===''?'':num(f.adicEspecial.value),decoracoes:st.decoracoes.slice(),cardapioId:p.cardapioId||'',
     bolo:{tamanho:t?t.nome:'',fatias:t?num(t.fatias):0,massa:nomeComp(st.massaId),recheios:st.recheioIds.map(nomeComp).filter(Boolean),cobertura:nomeComp(st.coberturaId),topper:st.topper?nomeComp(st.topperId):'',decoracoes:st.decoracoes.slice()},
     descricao:f.descricao.value.trim(),horas:f.horas.value.trim()===''?'':num(f.horas.value),embalagem:f.embalagem.value.trim()===''?'':num(f.embalagem.value),extras:num(f.extras.value),
-    valor:num(f.valor.value),sinal:num(f.sinal.value),pagamentos:(id&&S.ped[id]&&S.ped[id].pagamentos)||p.pagamentos||[],fotos:(id&&S.ped[id]&&S.ped[id].fotos)||p.fotos||[],linkPag:f.linkPag.value.trim(),linkToken:(id&&S.ped[id]&&S.ped[id].linkToken)||p.linkToken||'',aceite:(id&&S.ped[id]&&S.ped[id].aceite)||null,linkVistoEm:(id&&S.ped[id]&&S.ped[id].linkVistoEm)||'',status:f.status.value,obs:f.obs.value.trim(),criado:p.criado||new Date().toISOString()}};
+    outrosBolos:outros.map(o=>Object.assign({},o)),valor:num(f.valor.value),sinal:num(f.sinal.value),pagamentos:(id&&S.ped[id]&&S.ped[id].pagamentos)||p.pagamentos||[],fotos:(id&&S.ped[id]&&S.ped[id].fotos)||p.fotos||[],linkPag:f.linkPag.value.trim(),linkToken:(id&&S.ped[id]&&S.ped[id].linkToken)||p.linkToken||'',aceite:(id&&S.ped[id]&&S.ped[id].aceite)||null,linkVistoEm:(id&&S.ped[id]&&S.ped[id].linkVistoEm)||'',status:f.status.value,obs:f.obs.value.trim(),criado:p.criado||new Date().toISOString()}};
   const upd=()=>{
     let c=calcPedido(read());
     if(c.temEsp&&autoAdic&&c.tam&&num(c.tam.adicEspecial)){f.adicEspecial.value=inVal(num(c.tam.adicEspecial));c=calcPedido(read())}
@@ -914,7 +956,8 @@ function formPed(id,prefill){
     else if(!c.ok)box.innerHTML=`<span class="muted">${esc(c.tam.nome)} é sob consulta: digite o valor do bolo acima.</span>`;
     else{
       box.innerHTML=r(`${esc(c.tam.nome)}${c.tam.fatias?` · ${fmt(c.tam.fatias)} fatias`:''}`,brl(c.base))+(c.adic?r('Recheio especial',`+ ${brl(c.adic)}`):'')+(c.top?r(`Topo de bolo · ${esc(nomeComp(st.topperId))}`,`+ ${brl(c.top)}`):'')+(c.deco?r(`Decoração${st.decoracoes.length?' · '+esc(st.decoracoes.join(', ')):' e extras'}`,`+ ${brl(c.deco)}`):'')
-        +`<div class="big"><span>Valor do bolo</span><b>${brl(c.total)}</b></div>`
+        +c.outros.map((co,i)=>r(`Bolo ${i+2}${co.tam?' · '+esc(co.tam.nome):''}`,`+ ${brl(co.total)}`)).join('')
+        +`<div class="big"><span>${c.outros.length?`Valor dos ${c.outros.length+1} bolos`:'Valor do bolo'}</span><b>${brl(c.total)}</b></div>`
         +(!autoValor&&Math.abs(num(f.valor.value)-c.total)>=0.01?`<button type="button" class="btn ghost" id="pUsar" style="align-self:flex-start;min-height:34px">Usar ${brl(c.total)} no valor total</button>`:'');
       if(autoValor)f.valor.value=inVal(c.total);
     }
@@ -985,18 +1028,21 @@ function msgPedido(p,extra){
   const primeiro=(p.cliente||'').split(' ')[0];const oi=`Olá${primeiro?', '+primeiro:''}!`;
   const orc=p.status==='orcamento';
   const L=[];
-  if(orc)L.push(`${oi} Segue o orçamento do seu bolo:`,'');
-  else if(p.status==='pronto')L.push(`${oi} Seu bolo está pronto para retirada.`,'');
+  const vb=nBolos(p)>1;
+  if(orc)L.push(`${oi} Segue o orçamento ${vb?'dos seus bolos':'do seu bolo'}:`,'');
+  else if(p.status==='pronto')L.push(`${oi} ${vb?'Seus bolos estão prontos':'Seu bolo está pronto'} para retirada.`,'');
   else L.push(`${oi} Seu pedido está confirmado. Confira os detalhes:`,'');
-  const b=p.bolo||{};
-  if(b.tamanho)L.push(`Tamanho: ${b.tamanho}${b.fatias?` (rende ${fmt(b.fatias)} fatias)`:''}`);
-  else if(p.pesoKg)L.push(`Peso: ${fmt(p.pesoKg)} kg`);
-  if(b.massa)L.push(`Massa: ${b.massa}`);
-  if(b.recheios&&b.recheios.length)L.push(`Recheio: ${b.recheios.join(' e ')}`);
-  if(b.cobertura)L.push(`Cobertura: ${b.cobertura}`);
-  if(b.topper)L.push(`Topo de bolo: ${b.topper}`);
-  if(b.decoracoes&&b.decoracoes.length)L.push(`Decoração: ${b.decoracoes.join(', ')}`);
-  if(p.descricao)L.push(`Detalhes: ${p.descricao}`);
+  const txtBolo=(b,desc)=>{b=b||{};const T=[];
+    if(b.tamanho)T.push(`Tamanho: ${b.tamanho}${b.fatias?` (rende ${fmt(b.fatias)} fatias)`:''}`);
+    if(b.massa)T.push(`Massa: ${b.massa}`);
+    if(b.recheios&&b.recheios.length)T.push(`Recheio: ${b.recheios.join(' e ')}`);
+    if(b.cobertura)T.push(`Cobertura: ${b.cobertura}`);
+    if(b.topper)T.push(`Topo de bolo: ${b.topper}`);
+    if(b.decoracoes&&b.decoracoes.length)T.push(`Decoração: ${b.decoracoes.join(', ')}`);
+    if(desc)T.push(`Detalhes: ${desc}`);return T};
+  const outB=outrosDe(p);
+  if(outB.length){L.push('*Bolo 1*',...txtBolo(p.bolo,p.descricao));outB.forEach((o,i)=>L.push('',`*Bolo ${i+2}*`,...txtBolo(o.bolo,o.descricao)))}
+  else{const T=txtBolo(p.bolo,p.descricao);if(!(p.bolo&&p.bolo.tamanho)&&p.pesoKg)T.unshift(`Peso: ${fmt(p.pesoKg)} kg`);L.push(...T)}
   L.push('',`Retirada: ${quando}`);
   if(p.retirada==='app')L.push(`Motorista de aplicativo: o pedido do carro e o transporte ficam por sua conta. Endereço para o motorista: ${c.endereco}`);
   else if(c.endereco)L.push(`Local: ${c.endereco}`);
@@ -1097,15 +1143,8 @@ async function imagemOrcamento(p,pv,cod,pdf){
     y+=70;
     const titulo=t=>{ctx.fillStyle=IMG.brand;ctx.font='700 34px "Josefin Sans", sans-serif';spaced(ctx,t.toUpperCase(),P,y,3);y+=20;ctx.fillStyle=IMG.soft;ctx.fillRect(P,y,W-2*P,4);y+=52};
     const linha=(esq,dir,sub)=>{ctx.fillStyle=IMG.ink;ctx.font='700 32px "Figtree", sans-serif';ctx.fillText(lines(ctx,esq,W-2*P-260,1)[0],P,y);if(dir){ctx.textAlign='right';ctx.fillStyle=IMG.accent;ctx.fillText(dir,W-P,y);ctx.textAlign='left'}if(sub){y+=38;ctx.fillStyle=IMG.muted;ctx.font='500 27px "Figtree", sans-serif';lines(ctx,sub,W-2*P,3).forEach((l,i)=>{if(i)y+=36;ctx.fillText(l,P,y)})}y+=56};
-    titulo('Seu bolo');
-    if(b.tamanho)linha(b.tamanho,calc.tam?brl(calc.base):'',b.fatias?`Rende ${fmt(b.fatias)} fatias`:'');
-    else if(p.pesoKg)linha(`Bolo de ${fmt(p.pesoKg)} kg`,'');
-    const sabor=[b.massa?`Massa ${b.massa.toLowerCase()}`:'',b.recheios&&b.recheios.length?`recheio de ${b.recheios.join(' e ').toLowerCase()}`:'',b.cobertura?`cobertura de ${b.cobertura.toLowerCase()}`:''].filter(Boolean).join(', ');
-    if(sabor)linha('Sabor','',sabor.charAt(0).toUpperCase()+sabor.slice(1));
-    if(calc.adic)linha('Recheio especial',`+ ${brl(calc.adic)}`);
-    if(b.topper)linha(`Topo de bolo ${b.topper}`,calc.top?`+ ${brl(calc.top)}`:'');
-    if((b.decoracoes&&b.decoracoes.length)||calc.deco)linha(`Decoração${b.decoracoes&&b.decoracoes.length?': '+b.decoracoes.join(', '):''}`,calc.deco?`+ ${brl(calc.deco)}`:'');
-    if(p.descricao)linha('Detalhes','',p.descricao);
+    titulo(nBolos(p)>1?'Seus bolos':'Seu bolo');
+    itensPedido(p,calc).forEach((it,i)=>{if(it.cab&&i)y+=14;linha(it.t,it.v||'',it.sub||'')});
     y+=4;ctx.fillStyle=IMG.pink;rr(ctx,P,y,W-2*P,120,24);ctx.fill();
     ctx.fillStyle=IMG.ink;ctx.font='700 36px "Figtree", sans-serif';ctx.fillText('Total',P+32,y+74);
     ctx.textAlign='right';ctx.fillStyle=IMG.accent;ctx.font='800 56px "Figtree", sans-serif';ctx.fillText(brl(p.valor),W-P-32,y+80);ctx.textAlign='left';y+=170;
@@ -1595,6 +1634,55 @@ function abrirMais(){
   sh.addEventListener('click',e=>{if(e.target.closest('[data-maisir]'))closeSheet()});
 }
 
+/* ---------- bolo extra do orçamento ---------- */
+function formBoloExtra(o0,onSave,onDel,num2){
+  const o=Object.assign({tamanhoId:'',valorBolo:'',massaId:'',recheioIds:[],coberturaId:'',topper:false,topperId:'',adicEspecial:'',decoracoes:[],extras:'',descricao:''},o0||{});
+  const st={tamanhoId:o.tamanhoId,massaId:o.massaId,recheioIds:(o.recheioIds||[]).slice(),coberturaId:o.coberturaId,topper:!!o.topper,topperId:o.topperId,decoracoes:(o.decoracoes||[]).slice()};
+  const sh=openSheet(o0?`Bolo ${num2||''}`.trim():'Outro bolo',`<form class="f">
+    <div class="field"><span class="lbl">Tamanho</span><div class="pills" data-xg="tamanho"></div></div>
+    <div class="field" data-xbox="vb" hidden><label for="xVB">Valor do bolo (R$)</label><input id="xVB" name="valorBolo" inputmode="decimal" value="${inVal(o.valorBolo)}"><small>Tamanho sob consulta: digite o valor combinado.</small></div>
+    <div class="field"><span class="lbl">Massa (escolha 1)</span><div class="pills" data-xg="massa"></div></div>
+    <div class="field"><span class="lbl">Recheios (até 2)</span><div class="pills" data-xg="recheio"></div></div>
+    <div class="field" data-xbox="ad" hidden><label for="xAd">Adicional do recheio especial (R$)</label><input id="xAd" name="adicEspecial" inputmode="decimal" value="${inVal(o.adicEspecial)}"></div>
+    <div class="field"><span class="lbl">Cobertura</span><div class="pills" data-xg="cobertura"></div></div>
+    <div class="field"><span class="lbl">Deseja topo de bolo?</span><div class="pills" data-xg="topperSN"></div><div class="pills" data-xg="topper" style="margin-top:8px"></div></div>
+    <div class="field"><span class="lbl">Decoração</span><div class="pills" data-xg="deco"></div></div>
+    <div class="field"><label for="xExt">Valor da decoração e extras (R$)</label><input id="xExt" name="extras" inputmode="decimal" value="${inVal(o.extras)}" placeholder="0,00"></div>
+    <div class="field"><label for="xDesc">Detalhes e tema deste bolo</label><textarea id="xDesc" name="descricao" placeholder="Tema, cores, nome, escrita…">${esc(o.descricao||'')}</textarea></div>
+    <div class="note" data-xtot></div>
+    <div class="actions"><button class="btn primary" type="submit">${o0?'Salvar este bolo':'Adicionar ao orçamento'}</button>${onDel?'<button class="btn danger" type="button" data-xdel>Tirar este bolo</button>':''}</div>
+  </form>`,2);
+  const f=sh.querySelector('form');let autoAd=o.adicEspecial===''||o.adicEspecial==null;
+  const pl=(g,id,label,on)=>`<button type="button" class="pill" data-xp="${g}" data-id="${esc(id)}" aria-pressed="${on}">${label}</button>`;
+  const ler=()=>{const t=S.comp[st.tamanhoId];return{tamanhoId:st.tamanhoId,valorBolo:num(f.valorBolo.value),massaId:st.massaId,recheioIds:st.recheioIds.slice(),coberturaId:st.coberturaId,topper:st.topper,topperId:st.topper?st.topperId:'',
+    adicEspecial:f.adicEspecial.value.trim()===''?'':num(f.adicEspecial.value),decoracoes:st.decoracoes.slice(),extras:num(f.extras.value),descricao:f.descricao.value.trim(),
+    bolo:{tamanho:t?t.nome:'',fatias:t?num(t.fatias):0,massa:nomeComp(st.massaId),recheios:st.recheioIds.map(nomeComp).filter(Boolean),cobertura:nomeComp(st.coberturaId),topper:st.topper?nomeComp(st.topperId):'',decoracoes:st.decoracoes.slice()}}};
+  const draw=()=>{const g=k=>sh.querySelector(`[data-xg="${k}"]`);
+    g('tamanho').innerHTML=compsDe('tamanho').map(c=>pl('tamanho',c.id,`${esc(c.nome)} <small>${c.fatias?fmt(c.fatias)+' fatias · ':''}${precoTam(c)}</small>`,st.tamanhoId===c.id)).join('')||'<small class="muted">Cadastre os tamanhos no Cardápio.</small>';
+    g('massa').innerHTML=compsDe('massa').map(c=>pl('massa',c.id,esc(c.nome),st.massaId===c.id)).join('');
+    g('recheio').innerHTML=compsDe('recheio').map(c=>pl('recheio',c.id,`${esc(c.nome)}${c.especial?' <small>★ especial</small>':''}`,st.recheioIds.indexOf(c.id)>=0)).join('');
+    g('cobertura').innerHTML=compsDe('cobertura').map(c=>pl('cobertura',c.id,esc(c.nome),st.coberturaId===c.id)).join('')||'<small class="muted">Sem coberturas cadastradas.</small>';
+    g('topperSN').innerHTML=pl('topperSN','nao','Não',!st.topper)+pl('topperSN','sim','Sim',st.topper);
+    const tg=g('topper');tg.hidden=!st.topper;tg.innerHTML=compsDe('topper').map(c=>pl('topper',c.id,`${esc(c.nome)} <small>${brl(c.preco)}</small>`,st.topperId===c.id)).join('');
+    g('deco').innerHTML=DECOS.map(x=>pl('deco',x,esc(x),st.decoracoes.indexOf(x)>=0)).join('');
+    let c=calcUm(ler());
+    if(c.temEsp&&autoAd&&c.tam&&num(c.tam.adicEspecial)){f.adicEspecial.value=inVal(num(c.tam.adicEspecial));c=calcUm(ler())}
+    sh.querySelector('[data-xbox="vb"]').hidden=!c.consultar;sh.querySelector('[data-xbox="ad"]').hidden=!c.temEsp;
+    sh.querySelector('[data-xtot]').innerHTML=c.tam?`Este bolo: <b>${brl(c.total)}</b>`:'Escolha o tamanho do bolo.'};
+  draw();
+  sh.addEventListener('click',e=>{const b=e.target.closest('[data-xp]');if(b){const g=b.dataset.xp,v=b.dataset.id;
+      if(g==='tamanho')st.tamanhoId=st.tamanhoId===v?'':v;else if(g==='massa')st.massaId=st.massaId===v?'':v;else if(g==='cobertura')st.coberturaId=st.coberturaId===v?'':v;
+      else if(g==='recheio'){const i=st.recheioIds.indexOf(v);if(i>=0)st.recheioIds.splice(i,1);else if(st.recheioIds.length>=2){toast('Até 2 recheios.');return}else st.recheioIds.push(v)}
+      else if(g==='topperSN'){st.topper=v==='sim';if(!st.topper)st.topperId=''}else if(g==='topper')st.topperId=st.topperId===v?'':v;
+      else if(g==='deco'){const i=st.decoracoes.indexOf(v);if(i>=0)st.decoracoes.splice(i,1);else st.decoracoes.push(v)}
+      draw();return}
+    const d=e.target.closest('[data-xdel]');if(d)armDelete(d,()=>{onDel();closeSheet(2);toast('Bolo tirado do orçamento')})});
+  f.addEventListener('input',e=>{if(e.target.name==='adicEspecial')autoAd=false;draw()});
+  f.addEventListener('submit',e=>{e.preventDefault();if(!st.tamanhoId){toast('Escolha o tamanho do bolo.');return}
+    if(st.topper&&!st.topperId){toast('Escolha o tipo de topo de bolo ou marque “Não”.');return}
+    onSave(ler());closeSheet(2)});
+}
+
 /* ---------- lixeira ---------- */
 const LIX_DIAS=5;
 function tituloLixo(k,d){
@@ -1641,7 +1729,7 @@ function vLixeira(){
 const ag={ano:0,mes:0,dia:''};
 const capDia=()=>Math.max(1,num(S.cfg.capacidadeDia)||3);
 const pedidosDoDia=iso=>Object.entries(S.ped).map(([id,p])=>({id,...p})).filter(p=>p.entrega===iso&&p.status!=='cancelado').sort((a,b)=>(a.hora||'99').localeCompare(b.hora||'99'));
-const contaDia=iso=>pedidosDoDia(iso).filter(p=>p.status!=='orcamento').length;
+const contaDia=iso=>pedidosDoDia(iso).filter(p=>p.status!=='orcamento').reduce((s,p)=>s+nBolos(p),0);
 function vAgenda(){
   const t=today();if(!ag.ano){ag.ano=t.getFullYear();ag.mes=t.getMonth();ag.dia=isoD(t)}
   const prim=new Date(ag.ano,ag.mes,1),dias=new Date(ag.ano,ag.mes+1,0).getDate(),off=prim.getDay(),cap=capDia(),hoje=isoD(t);
@@ -1656,7 +1744,7 @@ function vAgenda(){
   const sel=ag.dia&&ag.dia.startsWith(mesIso)?ag.dia:'';const lista=sel?pedidosDoDia(sel):[];const nSel=sel?contaDia(sel):0;
   return`<header class="top"><div><div class="eyebrow">Seus pedidos no calendário</div><h1>Agenda</h1></div></header>
   <div class="agnav"><button class="btn ghost" data-agmes="-1" aria-label="Mês anterior">‹</button><b>${MES[ag.mes].charAt(0).toUpperCase()+MES[ag.mes].slice(1)} ${ag.ano}</b><button class="btn ghost" data-agmes="1" aria-label="Próximo mês">›</button></div>
-  <div class="stats" style="margin-bottom:12px"><div class="stat"><b class="num">${conf.length}</b><span>bolos no mês</span></div><div class="stat"><b>${brl(conf.reduce((s,p)=>s+num(p.valor),0))}</b><span>em pedidos</span></div><div class="stat"><b class="num${cheios?' up':''}">${cheios}</b><span>dia${cheios===1?'':'s'} cheio${cheios===1?'':'s'} (${cap}+ bolos)</span></div></div>
+  <div class="stats" style="margin-bottom:12px"><div class="stat"><b class="num">${conf.reduce((s,p)=>s+nBolos(p),0)}</b><span>bolos no mês</span></div><div class="stat"><b>${brl(conf.reduce((s,p)=>s+num(p.valor),0))}</b><span>em pedidos</span></div><div class="stat"><b class="num${cheios?' up':''}">${cheios}</b><span>dia${cheios===1?'':'s'} cheio${cheios===1?'':'s'} (${cap}+ bolos)</span></div></div>
   <div class="agcal"><div class="agw">${WD.map(w=>`<span>${w}</span>`).join('')}</div><div class="agg">${cells}</div></div>
   <p class="muted" style="font-size:.8rem;margin:8px 0 0"><span class="lg tem"></span> com pedido · <span class="lg cheio"></span> agenda cheia · <span class="lg orc"></span> orçamento esperando resposta</p>
   ${sel?`<div class="section"><div class="row between"><h2>${esc(diaLongo(sel))}</h2><button class="btn ghost" data-agnovo="${sel}">+ Pedido</button></div>
@@ -1889,7 +1977,7 @@ const nRecibo=n=>String(n||0).padStart(4,'0');
 const cidadeCfg=()=>{const e=String(S.cfg.endereco||'').split(',').map(x=>x.trim()).filter(Boolean);return e.length>1?e[e.length-1].replace(/\s*-\s*[A-Z]{2}$/,''):''};
 function viaPg(pg){return pg.forma==='credito'?`cartão de crédito${num(pg.parcelas)>1?` em ${num(pg.parcelas)}x`:''}`:pg.forma==='debito'?'cartão de débito':pg.forma==='pix'?'Pix':(FORMAS_PG[pg.forma]||'').toLowerCase()}
 function referentePg(p,pg){
-  const b=p.bolo||{};const bolo=b.tamanho?(/^bol/i.test(b.tamanho)?`do ${b.tamanho}`:`do bolo ${b.tamanho}`):'do bolo';
+  const b=p.bolo||{};const bolo=nBolos(p)>1?`de ${nBolos(p)} bolos`:b.tamanho?(/^bol/i.test(b.tamanho)?`do ${b.tamanho}`:`do bolo ${b.tamanho}`):'do bolo';
   const d=parseD(p.entrega);const data=d?` para ${WDL[d.getDay()]}, ${pad(d.getDate())}/${pad(d.getMonth()+1)}`:'';
   const pct=num(p.valor)?Math.round(num(pg.valor)/num(p.valor)*100):0;
   if(pg.tipo==='sinal')return`ao sinal${pct&&pct<100?` (${pct}%)`:''} do pedido ${bolo}${data}`;
@@ -2048,15 +2136,7 @@ function novoToken(){const t=new Uint8Array(32);crypto.getRandomValues(t);return
 const linkUrl=t=>new URL('pedido.html',location.href.split('#')[0]).href+'#'+t;
 function dadosLink(p,pv,cod,pdfUrl,pdfNome){
   const c=S.cfg,b=p.bolo||{},calc=calcPedido(p),d=parseD(p.entrega);
-  const itens=[];
-  if(b.tamanho)itens.push({t:b.tamanho,sub:b.fatias?`Rende ${fmt(b.fatias)} fatias`:'',v:calc.tam?brl(calc.base):''});
-  else if(p.pesoKg)itens.push({t:`Bolo de ${fmt(p.pesoKg)} kg`});
-  const sabor=[b.massa?`Massa ${b.massa.toLowerCase()}`:'',b.recheios&&b.recheios.length?`recheio de ${b.recheios.join(' e ').toLowerCase()}`:'',b.cobertura?`cobertura de ${b.cobertura.toLowerCase()}`:''].filter(Boolean).join(', ');
-  if(sabor)itens.push({t:'Sabor',sub:sabor.charAt(0).toUpperCase()+sabor.slice(1)});
-  if(calc.adic)itens.push({t:'Recheio especial',v:`+ ${brl(calc.adic)}`});
-  if(b.topper)itens.push({t:`Topo de bolo ${b.topper}`,v:calc.top?`+ ${brl(calc.top)}`:''});
-  if((b.decoracoes&&b.decoracoes.length)||calc.deco)itens.push({t:`Decoração${b.decoracoes&&b.decoracoes.length?': '+b.decoracoes.join(', '):''}`,v:calc.deco?`+ ${brl(calc.deco)}`:''});
-  if(p.descricao)itens.push({t:'Detalhes',sub:p.descricao});
+  const itens=itensPedido(p,calc).map(x=>({t:x.t,sub:x.sub||'',v:x.v||''}));
   const v=num(p.valor),sal=saldo(p),pg=[];
   if(p.status==='orcamento'||!num(p.sinal))pg.push([`Sinal para confirmar (${fmt(c.sinalPct)}%)`,brl(v*num(c.sinalPct)/100)]);
   if(num(p.sinal)){pg.push(['Sinal recebido',brl(p.sinal)]);pg.push([sal?'Falta pagar':'Pagamento',sal?brl(sal):'Completo'])}
@@ -2065,7 +2145,7 @@ function dadosLink(p,pv,cod,pdfUrl,pdfNome){
     retirada:{quando:d?`${WDL[d.getDay()]}, ${pad(d.getDate())}/${pad(d.getMonth()+1)}${p.hora?' às '+p.hora.replace(':','h'):''}`:'A combinar',app:p.retirada==='app',
       local:p.retirada==='app'?'Motorista de aplicativo (por conta do cliente)':(c.endereco||''),maps:c.endereco?`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(c.endereco)}`:''},
     itens,total:brl(v),totalN:v,pg,
-    pix:cod&&pv?{cod,valor:brl(pv.v),rotulo:pv.t}:null,cartao:linkPagDe(p)||'',parcelas:parcelasCartao(),
+    pix:cod&&pv?{cod,valor:brl(pv.v),rotulo:pv.t}:null,cartao:linkPagDe(p)||'',parcelas:parcelasCartao(),nBolos:nBolos(p),
     insta:c.instagram?{handle:c.instagram,url:`https://instagram.com/${encodeURIComponent(c.instagram.replace(/^@/,'').trim())}`}:null,
     aval:c.avaliacoes||'',zap:zn?{num:(zn.startsWith('55')&&zn.length>=12)?zn:'55'+zn,label:c.whatsapp,url:zapHref(c.whatsapp,'')}:null,
     email:c.email||'',site:c.site?{label:c.site.replace(/^https?:\/\//i,''),url:/^https?:/i.test(c.site)?c.site:'https://'+c.site}:null,

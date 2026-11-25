@@ -112,7 +112,7 @@ ol{margin:0;padding-left:1.3em;display:flex;flex-direction:column;gap:8px;color:
   html+='<header class="topo"><img src="icons/icon-512.png" alt="Logo Bia Marques Confeitaria"><div class="nm">Bia Marques</div><div class="sc">Confeitaria</div><div class="tit">'+esc(D.titulo||'ORÇAMENTO')+'</div></header><main>';
   html+='<div id="acStatus"></div>';
   html+='<section class="duo"><div><div class="k">Cliente</div><b>'+esc(D.cliente||'—')+'</b></div><div><div class="k">Retirada</div><b>'+esc(D.retirada&&D.retirada.quando||'A combinar')+'</b><div class="muted" style="font-size:.92rem">'+esc(D.retirada&&D.retirada.local||'')+'</div>'+(D.retirada&&D.retirada.maps?'<a href="'+esc(D.retirada.maps)+'" target="_blank" rel="noopener">'+(D.retirada.app?'Endereço no mapa para o motorista ›':'Ver rota no mapa ›')+'</a>':'')+'</div></section>';
-  html+='<section><h2>Seu bolo</h2><div class="rows">'+(D.itens||[]).map(linha).join('')+'</div></section>';
+  html+='<section><h2>'+((D.nBolos||1)>1?'Seus bolos':'Seu bolo')+'</h2><div class="rows">'+(D.itens||[]).map(linha).join('')+'</div></section>';
   html+='<section><div class="total"><span>Total</span><b>'+esc(D.total)+'</b></div><div class="pg">'+(D.pg||[]).map(function(x){return '<div class="row"><span>'+esc(x[0])+'</span><b>'+esc(x[1])+'</b></div>'}).join('')+'</div></section>';
   if(D.pix||D.cartao){
     html+='<section><h2>Pagamento</h2><div class="stack">';
