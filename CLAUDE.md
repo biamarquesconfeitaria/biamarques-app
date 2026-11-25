@@ -135,3 +135,8 @@ Sirva a pasta com qualquer servidor estático (ex.: `npx serve .`). Para trazer 
 ## Duplicar pedido
 
 - No pedido salvo, "Duplicar" (`#pDup`): abre um pedido novo (`formPed(null, cópia)`) com o que está no formulário (cliente, data, bolo, sabores, detalhes, valor), mas como Orçamento e sem pagamentos, sinal, fotos, link, aceite, avaliação/post e `criado`. Só grava quando a Bia toca em Salvar.
+
+## Compatibilidade com iPhone (Safari)
+
+- Nada de "lookbehind" em expressão regular (`(?<!…)` / `(?<=…)`): o Safari só aceita a partir do iOS 16.4 e, antes disso, o erro de sintaxe impede o app inteiro de abrir (aconteceu em nov/2026 com a leitura de nota). A leitura de nota usa `decsDe`, `tiraDecs` e `antesDoPreco` no lugar.
+- Evitar também `?.` e `??` (iOS 13.4+). Hoje o script principal passa no acorn com `ecmaVersion: 2018` (iOS 12+). Conferir antes de publicar mudanças grandes.

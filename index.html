@@ -251,8 +251,8 @@ a.note{display:block;color:var(--ink);text-decoration:none}
 (function(){
 /* ---------- utilidades ---------- */
 const $=s=>document.querySelector(s);
-const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const num=v=>{if(typeof v==='number')return isFinite(v)?v:0;let s=String(v??'').trim();if(!s)return 0;s=s.replace(/[^\d.,-]/g,'');if(s.includes(','))s=s.replace(/\./g,'').replace(',','.');const n=parseFloat(s);return isNaN(n)?0:n};
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const num=v=>{if(typeof v==='number')return isFinite(v)?v:0;let s=String(v==null?'':v).trim();if(!s)return 0;s=s.replace(/[^\d.,-]/g,'');if(s.includes(','))s=s.replace(/\./g,'').replace(',','.');const n=parseFloat(s);return isNaN(n)?0:n};
 const brl=n=>(Number(n)||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
 const fmt=(n,d=2)=>{n=Number(n)||0;return n.toLocaleString('pt-BR',{maximumFractionDigits:d})};
 const inVal=n=>(n===undefined||n===null||n==='')?'':String(n).replace('.',',');
@@ -1673,7 +1673,7 @@ const fiscal=()=>({regime:'mei',ativ:'com',das:{},dasn:{},...(S.cfg.fiscal||{})}
 // junta tudo que entrou e saiu: lançamentos, pagamentos dos pedidos, notas de compra e guias DAS pagas
 function movimentos(){
   const out=[];
-  Object.entries(S.lan||{}).forEach(([id,l])=>out.push({src:'lan',id,tipo:l.tipo,valor:num(l.valor),data:l.data||'',desc:l.desc||FIN_CATS[l.cat]?.[0]||'',cat:l.cat,forma:l.forma,fotos:l.fotos||[],parcela:l.parcela}));
+  Object.entries(S.lan||{}).forEach(([id,l])=>out.push({src:'lan',id,tipo:l.tipo,valor:num(l.valor),data:l.data||'',desc:l.desc||(FIN_CATS[l.cat]||[])[0]||'',cat:l.cat,forma:l.forma,fotos:l.fotos||[],parcela:l.parcela}));
   Object.entries(S.ped).forEach(([pid,p])=>pagamentosDe(p).forEach(g=>{if(!num(g.valor))return;out.push({src:'ped',id:pid,tipo:'e',valor:num(g.valor),data:g.data||(p.criado||'').slice(0,10)||p.entrega||'',desc:`${g.antigo?'Sinal':TIPOS_PG[g.tipo]||'Pagamento'} · ${p.cliente||'cliente'}`,cat:'venda',forma:g.forma==='credito'?'credito':g.forma})}));
   Object.entries(S.compr||{}).forEach(([id,c])=>{const v=num(c.total)||(c.itens||[]).reduce((s,i)=>s+num(i.preco)*(num(i.pacotes)||1),0);if(!v)return;
     const emb=(c.itens||[]).length&&(c.itens||[]).every(i=>i.cat==='embalagem');out.push({src:'compra',id,tipo:'s',valor:Math.round(v*100)/100,data:c.data||'',desc:`Nota de compra${c.loja?' · '+c.loja:''}`,cat:emb?'embalagens':'ingredientes',forma:''})});
@@ -1697,10 +1697,10 @@ function vFinanceiro(){
   <div class="stats"><div class="stat"><b class="down">${brl(ent)}</b><span>entrou</span></div><div class="stat"><b class="up">${brl(des)}</b><span>despesas</span></div><div class="stat"><b class="${saldoM<0?'up':''}">${brl(saldoM)}</b><span>sobrou no mês</span></div></div>
   <div class="row between muted" style="font-size:.88rem;margin:8px 0 12px;flex-wrap:wrap;gap:6px"><span>Retiradas (pró-labore): <b>${brl(ret)}</b></span><span>A receber dos pedidos: <b>${brl(receber)}</b></span></div>
   <div class="grid3" style="margin-bottom:14px"><button class="btn" data-fin="e">+ Entrada</button><button class="btn primary" data-fin="s">+ Despesa</button><button class="btn" data-fin="r">Retirada</button></div>
-  ${cats.length?`<div class="section" style="margin-top:0"><h2>Para onde foi o dinheiro</h2><div class="stack" style="gap:8px">${cats.map(([k,v])=>`<div><div class="row between" style="font-size:.88rem"><span>${esc(FIN_CATS[k]?.[0]||'Outras')}</span><b>${brl(v)}</b></div><div class="bar" style="margin-top:3px"><i style="animation:none;width:${Math.max(3,Math.round(v/maxC*100))}%"></i></div></div>`).join('')}</div></div>`:''}
+  ${cats.length?`<div class="section" style="margin-top:0"><h2>Para onde foi o dinheiro</h2><div class="stack" style="gap:8px">${cats.map(([k,v])=>`<div><div class="row between" style="font-size:.88rem"><span>${esc((FIN_CATS[k]||[])[0]||'Outras')}</span><b>${brl(v)}</b></div><div class="bar" style="margin-top:3px"><i style="animation:none;width:${Math.max(3,Math.round(v/maxC*100))}%"></i></div></div>`).join('')}</div></div>`:''}
   <div class="section"><div class="row between" style="flex-wrap:wrap;gap:8px"><h2 style="margin:0">Movimentos</h2><button class="btn ghost" data-act="finCsv" style="min-height:32px">Planilha</button></div>
     <div class="filters" style="margin:10px 0">${[['tudo','Tudo'],['e','Entradas'],['s','Saídas']].map(([k,n])=>`<button data-finfil="${k}" aria-pressed="${fin.filtro===k}">${n}</button>`).join('')}</div>
-    ${vis.length?Object.entries(grupos).map(([d,arr])=>`<div class="dayhead">${d?esc(diaFin(d)):'Sem data'}</div><div class="list">${arr.map(m=>`<button class="item" data-mov="${m.src}:${esc(m.id)}"><div class="main"><div class="t">${esc(m.desc)}${m.fotos&&m.fotos.length?' 📎':''}</div><div class="s">${esc(FIN_CATS[m.cat]?.[0]||'')}${m.forma?' · '+esc(FORMAS_FIN[m.forma]||FORMAS_PG[m.forma]||m.forma):''}${m.src==='ped'?' · pedido':m.src==='compra'?' · nota lida':m.src==='das'?' · Impostos':''}</div></div><div class="end"><b class="${m.tipo==='e'?'down':'up'}">${m.tipo==='e'?'+':'−'} ${brl(m.valor)}</b></div></button>`).join('')}</div>`).join('')
+    ${vis.length?Object.entries(grupos).map(([d,arr])=>`<div class="dayhead">${d?esc(diaFin(d)):'Sem data'}</div><div class="list">${arr.map(m=>`<button class="item" data-mov="${m.src}:${esc(m.id)}"><div class="main"><div class="t">${esc(m.desc)}${m.fotos&&m.fotos.length?' 📎':''}</div><div class="s">${esc((FIN_CATS[m.cat]||[])[0]||'')}${m.forma?' · '+esc(FORMAS_FIN[m.forma]||FORMAS_PG[m.forma]||m.forma):''}${m.src==='ped'?' · pedido':m.src==='compra'?' · nota lida':m.src==='das'?' · Impostos':''}</div></div><div class="end"><b class="${m.tipo==='e'?'down':'up'}">${m.tipo==='e'?'+':'−'} ${brl(m.valor)}</b></div></button>`).join('')}</div>`).join('')
       :'<div class="empty"><strong>Nada neste mês</strong>Os pagamentos registrados nos pedidos entram aqui sozinhos. Lance as despesas com “+ Despesa”.</div>'}
   </div>`;
 }
@@ -1750,8 +1750,8 @@ function abrirMov(key){
 }
 function finCsv(){
   const mesIso=`${fin.ano}-${pad(fin.mes+1)}`;const ms=movimentos().filter(m=>m.data.startsWith(mesIso)).sort((a,b)=>a.data.localeCompare(b.data));
-  const q=s=>`"${String(s??'').replace(/"/g,'""')}"`;
-  const L=[['Data','Tipo','Descrição','Categoria','Forma','Valor'].join(';'),...ms.map(m=>[fmtData(m.data),m.tipo==='e'?'Entrada':m.tipo==='r'?'Retirada':'Despesa',q(m.desc),q(FIN_CATS[m.cat]?.[0]||''),q(FORMAS_FIN[m.forma]||m.forma||''),(m.tipo==='e'?'':'-')+m.valor.toFixed(2).replace('.',',')].join(';'))];
+  const q=s=>`"${String(s==null?'':s).replace(/"/g,'""')}"`;
+  const L=[['Data','Tipo','Descrição','Categoria','Forma','Valor'].join(';'),...ms.map(m=>[fmtData(m.data),m.tipo==='e'?'Entrada':m.tipo==='r'?'Retirada':'Despesa',q(m.desc),q((FIN_CATS[m.cat]||[])[0]||''),q(FORMAS_FIN[m.forma]||m.forma||''),(m.tipo==='e'?'':'-')+m.valor.toFixed(2).replace('.',',')].join(';'))];
   getDownloads().then(d=>d.save({filename:`financeiro-${mesIso}.csv`,data:new Blob(['﻿'+L.join('\n')],{type:'text/csv'})})).then(()=>toast('Planilha salva'));
 }
 
@@ -2290,7 +2290,11 @@ async function prepImg(file,max=2400,q=.88){
   }catch(e){return file}
 }
 /* separar os itens do texto: código, descrição, quantidade, valor e total */
-const RX_DEC=/(?<![\d.,])\d{1,5}[.,]\d{2,3}(?!\d)/g;
+// sem "lookbehind" ((?<!...)): o Safari do iOS anterior ao 16.4 não entende e o app inteiro deixa de abrir
+const RX_DEC=/(^|[^\d.,])(\d{1,5}[.,]\d{2,3})(?!\d)/g;
+const decsDe=(t,rx)=>{const o=[];String(t).replace(rx||RX_DEC,(m,a,b)=>{o.push(b);return m});return o};
+const tiraDecs=t=>String(t).replace(RX_DEC,'$1 ');
+const antesDoPreco=t=>{const a=t.search(/\s{2,}(?=\S*\d)/);const m=/(^|[^\d.,])\d{1,5}[.,]\d{2}/.exec(t);const b=m?m.index+m[1].length:-1;const c=[a,b].filter(x=>x>=0);return c.length?t.slice(0,Math.min(...c)):t};
 const RX_FIM=/(qt?d?e?\.?\s*total\s*de\s*i|valor\s*total|valor\s*[aà]\s*pagar|sub-?total|total\s*r\$|forma\s*de\s*pag|formade)/i;
 const RX_EMB=/(caixa|\bcx\b|cake|board|\bbase\b|fita|saco|sacola|saquinho|embalagem|tampa|prato|suporte|forminha|forma\s*de\s*papel|papel\s*manteiga|pote|laco|etiqueta|bandeja|vela|topo|isopor|cartao|tag|celofane|cone)\b/i;
 const RX_CAB=/^(QTD|QTDE|UN|UND|VL|VL\.|UNIT|UNIT\.|TOTAL|R\$|COD|CODIGO|DESCRICAO|ITEM|VALOR)$/;
@@ -2339,9 +2343,9 @@ function lerTextoNota(txt){
   const ate=ic>=0?ic:(cab>=0?cab:Math.min(4,linhas.length));
   const nomes=linhas.slice(0,ate).map(l=>l.trim()).filter(l=>!/^\(.*\)$/.test(l)&&!/\b(rua|av|avenida|cep|tel|fone)\b/i.test(l)&&/[A-Za-zÀ-ú]{3}/.test(l)&&l.replace(/[^A-Za-zÀ-ú]/g,'').length>=l.replace(/\s/g,'').length*.7);
   res.loja=nomes.slice(-2).join(' ').split(/\s+/).filter(w=>/^[A-ZÀ-Ý&.\/-]{2,}$|^[EÉ]$/.test(w)).join(' ').slice(0,80);
-  const RX_TOT=/(?<![\d.,])\d{1,5}[.,]\d{2}/g;
+  const RX_TOT=/(^|[^\d.,])(\d{1,5}[.,]\d{2})/g;
   // total: junta os valores de "valor total", "a pagar" e do pagamento; fica com o que mais se repete
-  const tots=[];for(const l of linhas){const ns=l.match(RX_TOT);if(!ns)continue;
+  const tots=[];for(const l of linhas){const ns=decsDe(l,RX_TOT);if(!ns.length)continue;
     if(/[aà]\s*pagar|valor\s*total|^\s*total\b|dinheiro|cart[aã]o|cr[eé]dito|d[eé]bito|\bpix\b/i.test(l))tots.push(decNum(ns[ns.length-1]))}
   const freq={};tots.forEach(t=>{freq[t]=(freq[t]||0)+1});
   const totOrd=Object.keys(freq).map(Number).sort((a,b)=>freq[b]-freq[a]||tots.indexOf(a)-tots.indexOf(b));
@@ -2356,15 +2360,15 @@ function lerTextoNota(txt){
   const RX_COD=/(?:^|\s)(\d{3,7})\s+([A-Za-zÀ-ú].*)$/;
   for(const l of area){
     const m=l.match(RX_COD);let texto,novo=false;
-    if(m){at={cod:m[1],desc:[],ns:(m[2].match(RX_DEC)||[]).map(decNum)};itens.push(at);texto=m[2].split(/\s{2,}(?=\S*\d)|(?<![\d.,])\d{1,5}[.,]\d{2}/)[0];novo=true}
+    if(m){at={cod:m[1],desc:[],ns:decsDe(m[2]).map(decNum)};itens.push(at);texto=antesDoPreco(m[2]);novo=true}
     else texto=l;
-    let palavras=texto.replace(RX_DEC,' ').split(/\s+/).filter(Boolean);
+    let palavras=tiraDecs(texto).split(/\s+/).filter(Boolean);
     if(soMaius)palavras=palavras.filter(w=>!/[a-zà-ÿ]/.test(w));
     palavras=palavras.filter(w=>/[A-Za-zÀ-ú0-9]/.test(w)&&!RX_CAB.test(semAcento(w).toUpperCase()));
     const d=palavras.join(' ').replace(/^[^A-Za-zÀ-ú0-9]+|[^A-Za-zÀ-ú0-9)%]+$/g,'').trim();
     const temTexto=/[A-Za-zÀ-ú]{2}/.test(d);
     if(!novo){
-      const ns=(texto.match(RX_DEC)||[]).map(decNum);
+      const ns=decsDe(texto).map(decNum);
       if(!temTexto){soltos.push(...ns);continue}
       if(!at){at={cod:'',desc:[],ns:[]};itens.push(at)}
       if(ns.length&&!at.ns.length)at.ns=ns;
