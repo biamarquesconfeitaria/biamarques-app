@@ -609,6 +609,7 @@ function vAjustes(){
       <div class="field"><label for="cHs">Horário seg. a sáb.</label><input id="cHs" name="horarioSem" value="${esc(c.horarioSem)}" placeholder="9h às 18h"></div>
       <div class="field"><label for="cHd">Horário domingo</label><input id="cHd" name="horarioDom" value="${esc(c.horarioDom)}" placeholder="9h às 12h"></div>
       <div class="field"><label for="cPt">Prazo com topo</label><input id="cPt" name="prazoTopo" inputmode="numeric" value="${inVal(c.prazoTopo)}"><small>dias de antecedência</small></div>
+      <div class="field"><label for="cGF">Peso de uma fatia (g)</label><input id="cGF" name="gFatia" inputmode="numeric" value="${inVal(c.gFatia||100)}"><small>usado para calcular quantas fatias cada tamanho rende</small></div>
       <div class="field"><label for="cCap">Bolos por dia</label><input id="cCap" name="capacidadeDia" inputmode="numeric" value="${inVal(c.capacidadeDia||3)}"><small>a Agenda avisa quando o dia fica cheio</small></div>
       <div class="field"><label for="cPs">Prazo sem topo</label><input id="cPs" name="prazoSem" inputmode="numeric" value="${inVal(c.prazoSem)}"><small>dias de antecedência</small></div>
     </div>
@@ -730,6 +731,16 @@ function custoLote(c,IM){IM=IM||S.ing;let t=0;(c.itens||[]).forEach(it=>{const g
 function custoKgComp(c,IM){if(!c)return 0;if(c.modo==='manual')return num(c.custoKg);const kg=num(c.rendeKg);return kg?custoLote(c,IM)/kg:0}
 const nomeComp=id=>(S.comp[id]&&S.comp[id].nome)||'';
 function resumoBolo(p){const r=resumoBoloObj(p.bolo);const n=outrosDe(p).length;return n?`${r||'Bolo'} + ${n} bolo${n>1?'s':''}`:r}
+// medidas do bolo: volume × densidade de bolo recheado (0,85 g/cm³); fatia padrão de 100 g (Ajustes)
+const DENS_BOLO=0.85;
+const gFatia=()=>Math.max(30,num(S.cfg.gFatia)||100);
+function pesoBolo(formato,aro,alt){aro=num(aro);alt=num(alt)||10;if(!aro)return 0;const area=formato==='quadrado'?aro*aro:Math.PI*Math.pow(aro/2,2);return Math.round(area*alt*DENS_BOLO/100)/10}
+const fatiasDoPeso=kg=>Math.max(1,Math.round(num(kg)*1000/gFatia()));
+// custo médio por kg das massas, recheios e coberturas que têm custo
+function custoMedioKg(){const med=t=>{const v=compsDe(t).map(c=>custoKgComp(c)).filter(x=>x>0);return v.length?v.reduce((a,b)=>a+b,0)/v.length:0};return{m:med('massa'),r:med('recheio'),c:med('cobertura')}}
+function precoSugerido(peso,tam){const cm=custoMedioKg();const ing=(cm.m+cm.r+cm.c)*peso;if(!(cm.m||cm.r))return{ok:false};
+  const ind=ing*num(S.cfg.indiretosPct)/100,emb=temEmbTam(tam)?custoEmbTam(tam):num(S.cfg.embalagemPadrao),mo=peso*num(S.cfg.horasKg)*num(S.cfg.valorHora);
+  const custo=ing+ind+emb+mo;return{ok:true,custo,preco:Math.ceil(custo*(1+num(S.cfg.margemPct)/100))}}
 function custoEmbTam(t,IM){IM=IM||S.ing;let s=0;(t&&t.embItens||[]).forEach(it=>{const g=IM[it.ingId];if(g&&num(g.qtd))s+=num(g.preco)/num(g.qtd)*(num(it.qtd)||1)});return Math.round(s*100)/100}
 const temEmbTam=t=>!!(t&&(t.embItens||[]).some(it=>S.ing[it.ingId]));
 const embPadrao=t=>temEmbTam(t)?custoEmbTam(t):num(S.cfg.embalagemPadrao);
@@ -989,7 +1000,7 @@ function formPed(id,prefill){
       const lucro=v-c.custo-c.mo,pct=v?lucro/v*100:0;
       lb.hidden=false;
       lb.innerHTML=`<div class="eyebrow">Seu lucro estimado</div>`+r(`Ingredientes (≈ ${fmt(c.peso,1)} kg)`,brl(c.ing))+r(`Gás, energia, água`,brl(c.ind))+r('Embalagem',brl(c.emb))+r(`Sua mão de obra (${fmt(c.horas,1)} h × ${brl(S.cfg.valorHora)})`,brl(c.mo))
-        +`<div class="big"><span>Lucro</span><b class="${lucro<0?'up':''}" style="${lucro<0?'':'color:var(--good)'}">${brl(lucro)}</b></div><small class="muted">${lucro<0?'Esse valor não paga os custos e a sua hora.':`${fmt(pct,0)}% do valor, já pagando a sua hora.`}</small>`
+        +`<div class="big"><span>Lucro</span><b class="${lucro<0?'up':''}" style="${lucro<0?'':'color:var(--good)'}">${brl(lucro)}</b></div>`+(()=>{const fat=num(c.tam.fatias)+c.outros.reduce((a,co)=>a+(co.tam?num(co.tam.fatias):0),0);return fat?`<small class="muted">Por fatia (${fmt(fat)} fatias): preço ${brl(v/fat)} · custo ${brl((c.custo+c.mo)/fat)} · lucro ${brl(lucro/fat)}</small>`:''})()+`<small class="muted">${lucro<0?'Esse valor não paga os custos e a sua hora.':`${fmt(pct,0)}% do valor, já pagando a sua hora.`}</small>`
         +(c.semCusto.length?`<small class="up">Sem custo cadastrado: ${esc(c.semCusto.join(', '))}. Cadastre em Ingredientes para o lucro ficar certo.</small>`:'');
     }
     const av=avisosPedido({...d,_id:id});sh.querySelector('[data-avisos]').innerHTML=av.length?`<div class="note warn">${av.map(esc).join('<br>')}</div>`:'';
@@ -2641,7 +2652,7 @@ function vCardapio(){
   const ed=k=>`<button class="btn ghost" data-goto="${k}" style="min-height:32px">Editar</button>`;
   const tams=compsDe('tamanho'),rec=compsDe('recheio');
   return head
-  +sec('Tamanhos',tams.length?`<div class="list">${tams.map(t=>`<button class="item" data-tam="${esc(t.id)}"><div class="main"><div class="t">${esc(t.nome)}</div><div class="s">${[t.fatias?`Rende ${fmt(t.fatias)} fatias`:'',num(t.pesoKg)?`≈ ${fmt(t.pesoKg,1)} kg`:'',temEmbTam(t)?`embalagem ${brl(custoEmbTam(t))}`:''].filter(Boolean).join(' · ')||'&nbsp;'}</div></div><div class="end"><span class="price-big">${precoTam(t)}</span></div></button>`).join('')}</div>`:'<div class="empty"><strong>Nenhum tamanho</strong>Cadastre os tamanhos com o preço de cada um.</div>',`<button class="btn ghost" data-act="novoTam" style="min-height:32px">+ Tamanho</button>`)
+  +sec('Tamanhos',tams.length?`<div class="list">${tams.map(t=>`<button class="item" data-tam="${esc(t.id)}"><div class="main"><div class="t">${esc(t.nome)}</div><div class="s">${[t.fatias?`Rende ${fmt(t.fatias)} fatias`:'',num(t.aro)?`${t.formato==='quadrado'?fmt(t.aro)+'×'+fmt(t.aro):'aro '+fmt(t.aro)} cm`:'',num(t.pesoKg)?`≈ ${fmt(t.pesoKg,1)} kg`:'',!t.consultar&&num(t.fatias)&&num(t.preco)?`${brl(num(t.preco)/num(t.fatias))}/fatia`:'',temEmbTam(t)?`embalagem ${brl(custoEmbTam(t))}`:''].filter(Boolean).join(' · ')||'&nbsp;'}</div></div><div class="end"><span class="price-big">${precoTam(t)}</span></div></button>`).join('')}</div>`:'<div class="empty"><strong>Nenhum tamanho</strong>Cadastre os tamanhos com o preço de cada um.</div>',`<button class="btn ghost" data-act="novoTam" style="min-height:32px">+ Tamanho</button>`)
   +sec('Massa',chips(compsDe('massa').map(c=>c.nome)),ed('massa'))
   +sec('Recheios tradicionais',chips(rec.filter(c=>!c.especial).map(c=>c.nome)),ed('recheio'))
   +sec('Recheios especiais',chips(rec.filter(c=>c.especial).map(c=>c.nome))+'<small class="muted">Valor extra de acordo com o tamanho e a camada de recheio.</small>',ed('recheio'))
@@ -2662,8 +2673,15 @@ function formTam(id,opts={}){
       <div class="field"><label for="t${L}Preco">Preço (R$)</label><input id="t${L}Preco" name="preco" inputmode="decimal" value="${inVal(t.preco)}" placeholder="130,00"></div>
     </div>
     <label class="row" style="gap:10px"><input type="checkbox" name="consultar" ${t.consultar?'checked':''}><span>Valor a consultar <small class="muted">(ex.: bolo de andar)</small></span></label>
+    <h3 class="sub">Medidas do bolo</h3>
+    <div class="pills" data-tfmt>${[['redondo','Redondo'],['quadrado','Quadrado']].map(([k,n])=>`<button type="button" class="pill" data-v="${k}" aria-pressed="${(t.formato||'redondo')===k}">${n}</button>`).join('')}</div>
     <div class="grid2">
-      <div class="field"><label for="t${L}Kg">Peso aproximado (kg)</label><input id="t${L}Kg" name="pesoKg" inputmode="decimal" value="${inVal(t.pesoKg)}" placeholder="2,5"><small>Só para calcular o custo e o lucro.</small></div>
+      <div class="field"><label for="t${L}Aro" data-arolbl>${t.formato==='quadrado'?'Lado (cm)':'Aro (cm)'}</label><input id="t${L}Aro" name="aro" inputmode="decimal" value="${inVal(t.aro)}" placeholder="20"></div>
+      <div class="field"><label for="t${L}Alt">Altura (cm)</label><input id="t${L}Alt" name="altura" inputmode="decimal" value="${inVal(t.altura||'')}" placeholder="10"></div>
+    </div>
+    <div class="calc" data-tmed></div>
+    <div class="grid2">
+      <div class="field"><label for="t${L}Kg">Peso aproximado (kg)</label><input id="t${L}Kg" name="pesoKg" inputmode="decimal" value="${inVal(t.pesoKg)}" placeholder="2,5"><small>Calculado pelo aro e pela altura. Usado no custo e no lucro.</small></div>
       <div class="field"><label for="t${L}Ad">Extra recheio especial (R$)</label><input id="t${L}Ad" name="adicEspecial" inputmode="decimal" value="${inVal(t.adicEspecial)}" placeholder="0,00"><small>Entra no pedido quando o cliente escolhe um recheio especial.</small></div>
     </div>
     <div class="field"><span class="lbl">Embalagem deste tamanho</span>
@@ -2677,9 +2695,27 @@ function formTam(id,opts={}){
   const updEmb=()=>{const el=sh.querySelector(`#t${L}EmbT`);if(!el)return;const it=embItens();el.textContent=it.length?`Embalagem: ${brl(custoEmbTam({embItens:it}))} por bolo. Entra sozinho no lucro do pedido.`:`Nada marcado: o pedido usa a embalagem padrão dos Ajustes (${brl(S.cfg.embalagemPadrao)}).`};
   f.addEventListener('change',e=>{const c=e.target.closest('[data-emb]');if(c){const q=f.querySelector(`[data-embq="${c.dataset.emb}"]`);q.hidden=!c.checked}updEmb()});
   f.addEventListener('input',e=>{if(e.target.dataset.embq)updEmb()});updEmb();
+  // medidas → peso, fatias, preço por fatia e preço sugerido
+  let fmtT=t.formato||'redondo',pesoAuto=!num(t.pesoKg)||(num(t.aro)>0&&Math.abs(num(t.pesoKg)-pesoBolo(t.formato||'redondo',t.aro,t.altura))<0.06);
+  const updMed=()=>{const box=sh.querySelector('[data-tmed]');const aro=num(f.aro.value),alt=num(f.altura.value)||10;
+    const kg=aro?pesoBolo(fmtT,aro,alt):0;
+    if(kg&&pesoAuto)f.pesoKg.value=inVal(kg);
+    const peso=num(f.pesoKg.value),fat=num(f.fatias.value),preco=num(f.preco.value),fs=fatiasDoPeso(peso);
+    const sug=peso?precoSugerido(peso,{embItens:embItens()}):null;
+    const r=(a,b,cls)=>`<div class="r ${cls||''}"><span>${a}</span><span>${b}</span></div>`;
+    box.innerHTML=(kg?r(`Bolo ${fmtT==='quadrado'?aro+'×'+aro:'aro '+fmt(aro)} cm, ${fmt(alt)} cm de altura`,`≈ ${fmt(kg,1)} kg`):'<span class="muted">Coloque o aro (ou o lado) e a altura: o app calcula o peso e as fatias.</span>')
+      +(peso?r(`Rende cerca de`,`${fs} fatias de ${fmt(gFatia())} g`)+(fat&&Math.abs(fat-fs)>=1?`<button type="button" class="btn ghost" data-usarfat="${fs}" style="align-self:flex-start;min-height:32px">Usar ${fs} fatias</button>`:''):'')
+      +(fat&&preco&&!f.consultar.checked?r('Preço por fatia',brl(preco/fat),'total'):'')
+      +(sug&&sug.ok?r('Custo estimado do bolo',brl(sug.custo))+r(`Preço sugerido (lucro de ${fmt(S.cfg.margemPct)}%)`,`${brl(sug.preco)}${fat||fs?' · '+brl(sug.preco/(fat||fs))+'/fatia':''}`)
+        :(peso?'<small class="muted">Para o preço sugerido, cadastre o custo das massas e dos recheios (aba Ingredientes).</small>':''))};
+  sh.querySelector('[data-tfmt]').addEventListener('click',e=>{const b=e.target.closest('[data-v]');if(!b)return;fmtT=b.dataset.v;sh.querySelectorAll('[data-tfmt] [data-v]').forEach(x=>x.setAttribute('aria-pressed',x===b));sh.querySelector('[data-arolbl]').textContent=fmtT==='quadrado'?'Lado (cm)':'Aro (cm)';updMed()});
+  f.addEventListener('input',e=>{if(e.target.name==='pesoKg')pesoAuto=false;if(e.target.name==='aro'||e.target.name==='altura')pesoAuto=true;updMed()});
+  f.addEventListener('change',()=>updMed());
+  sh.addEventListener('click',e=>{const b=e.target.closest('[data-usarfat]');if(b){f.fatias.value=b.dataset.usarfat;updMed()}});
+  updMed();
   f.addEventListener('submit',e=>{e.preventDefault();
     const nid=id||uid();
-    save('comp',nid,{...(id?S.comp[id]:{}),tipo:'tamanho',nome:f.nome.value.trim(),fatias:num(f.fatias.value),preco:num(f.preco.value),consultar:f.consultar.checked,pesoKg:num(f.pesoKg.value),adicEspecial:num(f.adicEspecial.value),embItens:embItens()});
+    save('comp',nid,{...(id?S.comp[id]:{}),tipo:'tamanho',formato:fmtT,aro:num(f.aro.value),altura:num(f.altura.value),nome:f.nome.value.trim(),fatias:num(f.fatias.value),preco:num(f.preco.value),consultar:f.consultar.checked,pesoKg:num(f.pesoKg.value),adicEspecial:num(f.adicEspecial.value),embItens:embItens()});
     closeSheet(L);toast('Tamanho salvo');if(opts.onSaved)opts.onSaved(nid)});
   const del=sh.querySelector('[data-del]');if(del)del.addEventListener('click',()=>armDelete(del,()=>{remove('comp',id);closeSheet(L);toast('Tamanho foi para a lixeira')}));
 }
@@ -2989,7 +3025,7 @@ document.addEventListener('click',e=>{
 });
 document.addEventListener('submit',e=>{
   if(e.target.id!=='fCfg')return;e.preventDefault();const f=e.target;
-  saveCfg({parcelasCartao:Math.max(1,Math.round(num(f.parcelasCartao.value))||12),capacidadeDia:Math.max(1,Math.round(num(f.capacidadeDia.value))||3),linkAvaliar:f.linkAvaliar.value.trim(),nome:f.nome.value.trim(),valorHora:num(f.valorHora.value),margemPct:num(f.margemPct.value),indiretosPct:num(f.indiretosPct.value),sinalPct:num(f.sinalPct.value),horasKg:num(f.horasKg.value),embalagemPadrao:num(f.embalagemPadrao.value),whatsapp:f.whatsapp.value.trim(),instagram:f.instagram.value.trim(),email:f.email.value.trim(),site:f.site.value.trim(),pix:f.pix.value.trim(),pixTipo:f.pixTipo.value,pixNome:f.pixNome.value.trim(),pixCidade:f.pixCidade.value.trim(),linkPagamento:f.linkPagamento.value.trim(),avaliacoes:f.avaliacoes.value.trim(),endereco:f.endereco.value.trim(),horarioSem:f.horarioSem.value.trim(),horarioDom:f.horarioDom.value.trim(),prazoTopo:num(f.prazoTopo.value),prazoSem:num(f.prazoSem.value),pagamento:f.pagamento.value.trim(),decoracaoTxt:f.decoracaoTxt.value.trim(),infos:f.infos.value.split('\n').map(x=>x.trim()).filter(Boolean).join('\n')});toast('Ajustes salvos');
+  saveCfg({gFatia:Math.max(30,Math.round(num(f.gFatia.value))||100),parcelasCartao:Math.max(1,Math.round(num(f.parcelasCartao.value))||12),capacidadeDia:Math.max(1,Math.round(num(f.capacidadeDia.value))||3),linkAvaliar:f.linkAvaliar.value.trim(),nome:f.nome.value.trim(),valorHora:num(f.valorHora.value),margemPct:num(f.margemPct.value),indiretosPct:num(f.indiretosPct.value),sinalPct:num(f.sinalPct.value),horasKg:num(f.horasKg.value),embalagemPadrao:num(f.embalagemPadrao.value),whatsapp:f.whatsapp.value.trim(),instagram:f.instagram.value.trim(),email:f.email.value.trim(),site:f.site.value.trim(),pix:f.pix.value.trim(),pixTipo:f.pixTipo.value,pixNome:f.pixNome.value.trim(),pixCidade:f.pixCidade.value.trim(),linkPagamento:f.linkPagamento.value.trim(),avaliacoes:f.avaliacoes.value.trim(),endereco:f.endereco.value.trim(),horarioSem:f.horarioSem.value.trim(),horarioDom:f.horarioDom.value.trim(),prazoTopo:num(f.prazoTopo.value),prazoSem:num(f.prazoSem.value),pagamento:f.pagamento.value.trim(),decoracaoTxt:f.decoracaoTxt.value.trim(),infos:f.infos.value.split('\n').map(x=>x.trim()).filter(Boolean).join('\n')});toast('Ajustes salvos');
 });
 document.addEventListener('input',e=>{if(e.target.id==='buscaIng'){buscaIng=e.target.value;const pos=e.target.selectionStart;render();const n=$('#buscaIng');if(n){n.focus();try{n.setSelectionRange(pos,pos)}catch(_){}}}});
 document.addEventListener('change',e=>{if(e.target.dataset&&e.target.dataset.fx==='ativ'){salvarFiscal({ativ:e.target.value});return}

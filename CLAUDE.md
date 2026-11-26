@@ -154,3 +154,9 @@ Sirva a pasta com qualquer servidor estático (ex.: `npx serve .`). Para trazer 
 - Ingrediente: unidade g, kg, ml, L ou un. Em kg/L grava `qtd`×1000 na unidade base e `unMostrar: 'kg'|'l'`, para reabrir e listar como "5 kg".
 - Linhas de recheio/massa/cobertura e de receita: quantidade + seletor de unidade (g/kg ou ml/L conforme o ingrediente; `htmlLinhaIng`, `lerLinhaIng`, `unDaLinha`), com o custo da linha embaixo. Cada item guarda `un` (só para mostrar).
 - "Rende quanto?" (receita) e "serve para quanto de bolo?" (recheio etc.) aceitam kg ou g; grava sempre em kg (`rendimentoKg`, `rendeKg`).
+
+## Fatias pelo tamanho do bolo
+
+- A Bia vende por tamanho/fatia, não por kg. No tamanho (`formTam`): formato (redondo/quadrado), aro ou lado e altura (`t.formato`, `t.aro`, `t.altura`). `pesoBolo` = área × altura × `DENS_BOLO` (0,85 g/cm³) e preenche o peso sozinho (enquanto ela não digitar outro); `fatiasDoPeso` usa o peso da fatia de Ajustes (`cfg.gFatia`, padrão 100 g) e oferece "Usar N fatias".
+- Mostra preço por fatia e, se houver massas/recheios com custo, "Preço sugerido" (`precoSugerido`: custo médio por kg das massas+recheios+coberturas × peso + gás/energia + embalagem + mão de obra, com o lucro padrão dos Ajustes).
+- Lista de tamanhos mostra aro, peso e "R$ x/fatia"; o lucro do pedido mostra preço, custo e lucro por fatia.
