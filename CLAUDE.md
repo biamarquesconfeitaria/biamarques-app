@@ -147,3 +147,10 @@ Sirva a pasta com qualquer servidor estático (ex.: `npx serve .`). Para trazer 
 - No pedido: "Mais bolos neste orçamento" + "Adicionar outro bolo" (`formBoloExtra`, folha 2, com o mesmo jeito de escolher tamanho, massa, recheios, cobertura, topo, decoração e detalhes). Tocar no bolo da lista edita ou tira.
 - `calcUm(d)` calcula um bolo; `calcPedido(d)` soma o 1º com os outros (total, custos, horas e embalagem de cada tamanho) e devolve `outros` (cálculo de cada um) e `totalPrincipal`.
 - `itensPedido(p)` (via `itensDeBolo`) monta as linhas "Bolo 1 · Bolo P", "Bolo 2 · Bolo M"… usadas no orçamento em PDF/imagem e na página do link (`dados.itens`, `dados.nBolos`); o texto do WhatsApp lista *Bolo 1*, *Bolo 2*. `resumoBolo` mostra "+ 1 bolo"; o recibo diz "do pedido de 2 bolos"; a Agenda conta bolos (não pedidos) para o dia cheio.
+
+## Gramas e quilos (ingredientes, recheios e receitas)
+
+- Tudo continua guardado em g / ml / un (`g.qtd`, `it.qtd`); kg e L existem só para digitar e mostrar (`fatorUn`, `baseDeUn`, `ROT_UN`).
+- Ingrediente: unidade g, kg, ml, L ou un. Em kg/L grava `qtd`×1000 na unidade base e `unMostrar: 'kg'|'l'`, para reabrir e listar como "5 kg".
+- Linhas de recheio/massa/cobertura e de receita: quantidade + seletor de unidade (g/kg ou ml/L conforme o ingrediente; `htmlLinhaIng`, `lerLinhaIng`, `unDaLinha`), com o custo da linha embaixo. Cada item guarda `un` (só para mostrar).
+- "Rende quanto?" (receita) e "serve para quanto de bolo?" (recheio etc.) aceitam kg ou g; grava sempre em kg (`rendimentoKg`, `rendeKg`).
