@@ -693,7 +693,7 @@ function formRec(id){
   const sh=openSheet(id?'Editar receita':'Nova receita',`<form class="f" id="fRec">
     <div class="field"><label for="rNome">Nome do bolo</label><input id="rNome" name="nome" required value="${esc(r.nome)}" placeholder="Ex.: Massa branca com brigadeiro"></div>
     <div class="grid2">
-      <div class="field"><label for="rKg">Rende quanto?</label><div class="row" style="gap:6px"><input id="rKg" name="rendimentoKg" inputmode="decimal" required value="${inVal(r.rendimentoKg)}" placeholder="2" style="flex:1"><select name="rendUn" aria-label="Unidade do rendimento" style="width:72px"><option value="kg">kg</option><option value="g">g</option></select></div></div>
+      <div class="field"><label for="rKg">Rende quanto?</label><div class="row" style="gap:6px"><input id="rKg" name="rendimentoKg" inputmode="decimal" required value="${inVal(valRend(r.rendimentoKg,r.rendVal,r.rendUn))}" placeholder="2" style="flex:1"><select name="rendUn" aria-label="Unidade do rendimento" style="width:118px">${optsRend(r.rendUn)}</select></div><small data-rendnota></small></div>
       <div class="field"><label for="rHoras">Horas de trabalho</label><input id="rHoras" name="horas" inputmode="decimal" value="${inVal(r.horas)}" placeholder="4"></div>
       <div class="field"><label for="rEmb">Embalagem e base</label><input id="rEmb" name="embalagem" inputmode="decimal" value="${inVal(r.embalagem)}" placeholder="12,00"><small>caixa, base, fita (R$)</small></div>
       <div class="field"><label for="rMargem">Lucro (%)</label><input id="rMargem" name="margem" inputmode="decimal" value="${inVal(r.margem)}" placeholder="${inVal(S.cfg.margemPct)} (padrão)"></div>
@@ -707,8 +707,9 @@ function formRec(id){
   </form>`);
   const f=sh.querySelector('form');const box=sh.querySelector('#rItens');
   const drawItens=()=>{box.innerHTML=draft.itens.map((it,i)=>htmlLinhaIng(it,i,opts(it.ingId))).join('')};
-  const recalc=()=>{const tmp={rendimentoKg:num(f.rendimentoKg.value)/(f.rendUn.value==='g'?1000:1),horas:f.horas.value,embalagem:f.embalagem.value,margem:f.margem.value,itens:draft.itens};const c=custoReceita(tmp);
-    sh.querySelector('#rCalc').innerHTML=`<div class="r"><span>Ingredientes</span><span>${brl(c.ing)}</span></div><div class="r"><span>Gás, energia, água (${fmt(S.cfg.indiretosPct)}%)</span><span>${brl(c.ind)}</span></div><div class="r"><span>Sua mão de obra (${fmt(num(tmp.horas))} h × ${brl(S.cfg.valorHora)})</span><span>${brl(c.mo)}</span></div><div class="r"><span>Embalagem e base</span><span>${brl(c.emb)}</span></div><div class="r total"><span>Custo total</span><span>${brl(c.total)}</span></div><div class="r"><span>Lucro (${fmt(c.margem)}%)</span><span>${brl(c.lucro)}</span></div><div class="r total"><span>Preço do bolo inteiro</span><span>${brl(c.preco)}</span></div><div class="big"><span>Preço sugerido por kg</span><b>${brl(c.porKg)}</b></div>`};
+  const recalc=()=>{const tmp={rendimentoKg:kgDeRend(f.rendimentoKg.value,f.rendUn.value),horas:f.horas.value,embalagem:f.embalagem.value,margem:f.margem.value,itens:draft.itens};const c=custoReceita(tmp);
+    sh.querySelector('#rCalc').innerHTML=`<div class="r"><span>Ingredientes</span><span>${brl(c.ing)}</span></div><div class="r"><span>Gás, energia, água (${fmt(S.cfg.indiretosPct)}%)</span><span>${brl(c.ind)}</span></div><div class="r"><span>Sua mão de obra (${fmt(num(tmp.horas))} h × ${brl(S.cfg.valorHora)})</span><span>${brl(c.mo)}</span></div><div class="r"><span>Embalagem e base</span><span>${brl(c.emb)}</span></div><div class="r total"><span>Custo total</span><span>${brl(c.total)}</span></div><div class="r"><span>Lucro (${fmt(c.margem)}%)</span><span>${brl(c.lucro)}</span></div><div class="r total"><span>Preço do bolo inteiro</span><span>${brl(c.preco)}</span></div><div class="big"><span>Preço sugerido por kg</span><b>${brl(c.porKg)}</b></div>${num(tmp.rendimentoKg)?`<div class="big"><span>Preço sugerido por fatia</span><b>${brl(c.preco/fatiasDoPeso(tmp.rendimentoKg))}</b></div>`:''}`;
+    const rn=sh.querySelector('[data-rendnota]');if(rn)rn.textContent=notaRend(num(tmp.rendimentoKg))};
   drawItens();recalc();
   box.addEventListener('change',e=>{const row=e.target.closest('.ingrow');if(!row)return;const i=+row.dataset.i;if(e.target.dataset.k==='ingId'){draft.itens[i].ingId=e.target.value;draft.itens[i].un='';draft.itens[i].qtd='';drawItens()}else lerLinhaIng(row,draft.itens[i]);recalc()});
   box.addEventListener('input',e=>{const row=e.target.closest('.ingrow');if(!row||e.target.dataset.k!=='qtd')return;lerLinhaIng(row,draft.itens[+row.dataset.i]);recalc()});
@@ -717,7 +718,7 @@ function formRec(id){
   f.addEventListener('input',e=>{if(!e.target.closest('#rItens'))recalc()});
   f.addEventListener('submit',e=>{e.preventDefault();
     const itens=draft.itens.filter(it=>it.ingId&&num(it.qtd)).map(it=>({ingId:it.ingId,qtd:num(it.qtd),un:unDaLinha(it)}));
-    const obj={nome:f.nome.value.trim(),rendimentoKg:r3(num(f.rendimentoKg.value)/(f.rendUn.value==='g'?1000:1)),horas:num(f.horas.value),embalagem:num(f.embalagem.value),itens};
+    const obj={nome:f.nome.value.trim(),rendimentoKg:r3(kgDeRend(f.rendimentoKg.value,f.rendUn.value)),rendVal:num(f.rendimentoKg.value),rendUn:f.rendUn.value,horas:num(f.horas.value),embalagem:num(f.embalagem.value),itens};
     if(f.margem.value.trim()!=='')obj.margem=num(f.margem.value);
     save('rec',id,obj);closeSheet();toast('Receita salva')});
   const del=sh.querySelector('#rDel');if(del)del.addEventListener('click',()=>armDelete(del,()=>{remove('rec',id);closeSheet();toast('Receita foi para a lixeira')}));
@@ -733,6 +734,12 @@ const nomeComp=id=>(S.comp[id]&&S.comp[id].nome)||'';
 function resumoBolo(p){const r=resumoBoloObj(p.bolo);const n=outrosDe(p).length;return n?`${r||'Bolo'} + ${n} bolo${n>1?'s':''}`:r}
 // medidas do bolo: volume × densidade de bolo recheado (0,85 g/cm³); fatia padrão de 100 g (Ajustes)
 const DENS_BOLO=0.85;
+// rendimento de receita/recheio: em kg, g, fatias ou "× Bolo P" (usa o peso do tamanho); grava sempre em kg
+function optsRend(sel){sel=sel||'kg';const ts=compsDe('tamanho').filter(t=>num(t.pesoKg)>0);
+  return[['kg','kg'],['g','g'],['fatias','fatias']].map(([v,n])=>`<option value="${v}" ${sel===v?'selected':''}>${n}</option>`).join('')+ts.map(t=>`<option value="tam:${esc(t.id)}" ${sel==='tam:'+t.id?'selected':''}>× ${esc(t.nome)}</option>`).join('')}
+function kgDeRend(v,u){v=num(v);if(!v)return 0;if(u==='g')return v/1000;if(u==='fatias')return v*gFatia()/1000;if(String(u).indexOf('tam:')===0){const t=S.comp[u.slice(4)];return t?v*num(t.pesoKg):0}return v}
+const valRend=(kg,val,un)=>un&&un!=='kg'&&num(val)?val:kg;
+function notaRend(kg){if(!kg)return'';const fs=fatiasDoPeso(kg);return`≈ ${fmt(kg,kg<1?2:1)} kg de bolo · ≈ ${fs} fatia${fs>1?'s':''} de ${fmt(gFatia())} g`}
 const gFatia=()=>Math.max(30,num(S.cfg.gFatia)||100);
 function pesoBolo(formato,aro,alt){aro=num(aro);alt=num(alt)||10;if(!aro)return 0;const area=formato==='quadrado'?aro*aro:Math.PI*Math.pow(aro/2,2);return Math.round(area*alt*DENS_BOLO/100)/10}
 const fatiasDoPeso=kg=>Math.max(1,Math.round(num(kg)*1000/gFatia()));
@@ -802,7 +809,7 @@ function vComps(tipo){
   const intro=tipo==='topper'?'Cadastre os tipos de topper e quanto você cobra por cada um. O valor entra direto no total do pedido.':`Cadastre ${tipo==='massa'||tipo==='cobertura'?'suas':'seus'} ${T.pl.toLowerCase()}. Monte com os ingredientes ou digite o custo. O custo é calculado por kg de bolo e entra no valor do pedido.`;
   return`<p class="muted" style="margin:0 0 12px">${intro}</p>
   ${cs.length?`<div class="list">${cs.map(c=>{
-    const sub=tipo==='topper'?'Valor cobrado no pedido':c.modo==='manual'?'Custo digitado à mão':`${(c.itens||[]).length} ingrediente${(c.itens||[]).length===1?'':'s'} · serve ${fmt(c.rendeKg)} kg de bolo`;
+    const sub=tipo==='topper'?'Valor cobrado no pedido':c.modo==='manual'?'Custo digitado à mão':`${(c.itens||[]).length} ingrediente${(c.itens||[]).length===1?'':'s'} ${num(c.rendeKg)?` · serve ${fmt(c.rendeKg)} kg (≈ ${fatiasDoPeso(c.rendeKg)} fatias)`:' · falta dizer quanto rende'}${custoKgComp(c)?' · '+brl(custoKgComp(c)*gFatia()/1000)+'/fatia':''}`;
     const end=tipo==='topper'?`<span class="price-big">${brl(c.preco)}</span>`:`<span class="price-big">${brl(custoKgComp(c))}</span><span class="muted" style="font-size:.78rem;display:block">custo por kg</span>`;
     return`<button class="item" data-comp="${esc(c.id)}"><div class="main"><div class="t">${esc(c.nome)}${c.especial?'<span class="tag" style="color:var(--accent);border-color:var(--accent)">especial</span>':''}${c.exemplo?'<span class="tag">exemplo</span>':''}</div><div class="s">${sub}</div></div><div class="end">${end}</div></button>`}).join('')}</div>`
   :`<div class="empty"><strong>Nenhum${tipo==='massa'||tipo==='cobertura'?'a':''} ${T.t.toLowerCase()} ainda</strong>${T.ex}.</div>`}
@@ -827,7 +834,7 @@ function formComp(id,tipo,opts={}){
       ${ings.length?'':'<div class="note warn">Você ainda não cadastrou ingredientes. Use “Digitar o custo” ou cadastre os ingredientes primeiro.</div>'}
       <div class="stack" data-rows style="gap:8px"></div>
       <button class="btn" type="button" data-addrow>+ Adicionar ingrediente</button>
-      <div class="field"><label for="k${L}Kg">Essa receita serve para quanto de bolo?</label><div class="row" style="gap:6px"><input id="k${L}Kg" name="rendeKg" inputmode="decimal" value="${inVal(c.rendeKg)}" placeholder="2" style="flex:1"><select name="rendeUn" aria-label="Unidade" style="width:72px"><option value="kg">kg</option><option value="g">g</option></select></div><small>Ex.: 2 kg, ou 800 g.</small></div>
+      <div class="field"><label for="k${L}Kg">Essa receita serve para quanto de bolo?</label><div class="row" style="gap:6px"><input id="k${L}Kg" name="rendeKg" inputmode="decimal" value="${inVal(valRend(c.rendeKg,c.rendeVal,c.rendeUn))}" placeholder="2" style="flex:1"><select name="rendeUn" aria-label="Unidade" style="width:118px">${optsRend(c.rendeUn)}</select></div><small data-rendnota>Ex.: 2 kg, 800 g, 25 fatias ou 1 × Bolo P.</small></div>
     </div>
     <div class="stack" data-box="manual" ${draft.modo==='manual'?'':'hidden'}>
       <div class="field"><label for="k${L}Ckg">Custo por kg de bolo (R$)</label><input id="k${L}Ckg" name="custoKg" inputmode="decimal" value="${inVal(c.custoKg)}" placeholder="12,00"><small>Quanto essa parte custa para cada kg de bolo, só os ingredientes.</small></div>
@@ -839,10 +846,11 @@ function formComp(id,tipo,opts={}){
   const rows=sh.querySelector('[data-rows]');
   const drawRows=()=>{if(!rows)return;rows.innerHTML=draft.itens.map((it,i)=>htmlLinhaIng(it,i,opt(it.ingId))).join('')};
   const recalc=()=>{const box=sh.querySelector('[data-calc]');if(!box)return;
-    const tmp={modo:draft.modo,itens:draft.itens,rendeKg:f.rendeKg?num(f.rendeKg.value)/(f.rendeUn&&f.rendeUn.value==='g'?1000:1):'',custoKg:f.custoKg?f.custoKg.value:''};
+    const tmp={modo:draft.modo,itens:draft.itens,rendeKg:f.rendeKg?kgDeRend(f.rendeKg.value,f.rendeUn?f.rendeUn.value:'kg'):'',custoKg:f.custoKg?f.custoKg.value:''};
     if(draft.modo==='manual'){box.innerHTML=`<div class="big"><span>Custo por kg de bolo</span><b>${brl(num(tmp.custoKg))}</b></div>`;return}
     const lote=custoLote(tmp),kg=num(tmp.rendeKg);
-    box.innerHTML=`<div class="r"><span>Custo da receita inteira</span><span>${brl(lote)}</span></div><div class="big"><span>Custo por kg de bolo</span><b>${kg?brl(lote/kg):'—'}</b></div>${kg?'':'<small class="muted">Informe para quantos kg de bolo a receita serve.</small>'}`};
+    box.innerHTML=`<div class="r"><span>Custo da receita inteira</span><span>${brl(lote)}</span></div><div class="big"><span>Custo por kg de bolo</span><b>${kg?brl(lote/kg):'—'}</b></div>${kg?`<div class="big"><span>Custo por fatia</span><b>${brl(lote/kg*gFatia()/1000)}</b></div>`:'<small class="muted">Informe para quanto de bolo a receita serve (kg, g, fatias ou tamanho).</small>'}`;
+    const rn=sh.querySelector('[data-rendnota]');if(rn&&kg)rn.textContent=notaRend(kg)};
   drawRows();recalc();
   sh.addEventListener('click',e=>{
     const m=e.target.closest('[data-m]');if(m){draft.modo=m.dataset.m;sh.querySelectorAll('[data-m]').forEach(b=>b.setAttribute('aria-pressed',b===m));sh.querySelectorAll('[data-box]').forEach(b=>b.hidden=b.dataset.box!==draft.modo);recalc();return}
@@ -859,7 +867,7 @@ function formComp(id,tipo,opts={}){
     let obj;
     if(isTop)obj={tipo,nome:f.nome.value.trim(),preco:num(f.preco.value)};
     else if(draft.modo==='manual')obj={tipo,nome:f.nome.value.trim(),modo:'manual',custoKg:num(f.custoKg.value)};
-    else obj={tipo,nome:f.nome.value.trim(),modo:'ingredientes',itens:draft.itens.filter(it=>it.ingId&&num(it.qtd)).map(it=>({ingId:it.ingId,qtd:num(it.qtd),un:unDaLinha(it)})),rendeKg:r3(num(f.rendeKg.value)/(f.rendeUn&&f.rendeUn.value==='g'?1000:1))};
+    else obj={tipo,nome:f.nome.value.trim(),modo:'ingredientes',itens:draft.itens.filter(it=>it.ingId&&num(it.qtd)).map(it=>({ingId:it.ingId,qtd:num(it.qtd),un:unDaLinha(it)})),rendeKg:r3(kgDeRend(f.rendeKg.value,f.rendeUn?f.rendeUn.value:'kg')),rendeVal:num(f.rendeKg.value),rendeUn:f.rendeUn?f.rendeUn.value:'kg'};
     if(tipo==='recheio')obj.especial=!!(f.especial&&f.especial.checked);
     const nid=id||uid();save('comp',nid,obj);closeSheet(L);toast(`${T.t} salv${tipo==='massa'||tipo==='cobertura'?'a':'o'}`);
     if(opts.onSaved)opts.onSaved(nid);
